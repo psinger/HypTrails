@@ -640,12 +640,6 @@ def plot_kvalues_barchart_dual(l1, l2, xlabel, ylabel, labels, filename, loc = 4
     rects1 = ax.bar(ind, l1.values(), width, color='b')
     rects2 = ax.bar(ind+width, l2.values(), width, color='g')
     
-    
-    #plt.bar(l1.keys(), l1.values(), label=labels[0])
-    #plt.bar(l2.keys(), l2.values(), label=labels[1]) 
-     
-    #ticks = np.arange(min(l1.keys()), max(l1.keys())+1)
-    #print ticks
     ax.set_xticks(ind+width)
     ax.set_xticklabels( tuple([str(x) for x in l1.keys()]) )
     
@@ -674,11 +668,6 @@ def plot_kvalues_barchart_quat(l1, l2, l3, l4, xlabel, ylabel, labels, filename,
     rects3 = ax.bar(ind, l3.values(), width=width, color='g')
     rects4 = ax.bar(ind+width, l4.values(),hatch="//", width=width,  color='g')
     
-    #plt.bar(l1.keys(), l1.values(), label=labels[0])
-    #plt.bar(l2.keys(), l2.values(), label=labels[1]) 
-     
-    #ticks = np.arange(min(l1.keys()), max(l1.keys())+1)
-    #print ticks
     ax.set_xticks(ind+width)
     ax.set_xticklabels( tuple([str(x) for x in l1.keys()]) )
     
@@ -710,11 +699,7 @@ def plot_kvalues_barchart_six(l1, l2, l3, l4, l5, l6, xlabel, ylabel, labels, fi
     rects5 = ax.bar(ind+0.25, l5.values(), width=width, color='g')
     rects6 = ax.bar(ind+0.50, l6.values(),hatch="//", width=width,  color='g')
     
-    #plt.bar(l1.keys(), l1.values(), label=labels[0])
-    #plt.bar(l2.keys(), l2.values(), label=labels[1]) 
-     
-    #ticks = np.arange(min(l1.keys()), max(l1.keys())+1)
-    #print ticks
+
     ax.set_xticks(ind+width*2)
     ax.set_xticklabels( tuple([str(x) for x in l1.keys()]) )
     
@@ -783,12 +768,10 @@ def transition_dicts_to_matrix(transition_dict_dict):
         i_indices = []
         j_indices = []
         values = []
-        #vocabulary = self.vocabulary_
 
         vocab = set()
 
         for transition_dict_key in transition_dict_dict.keys():
-            #print "key", transition_dict_dict[cooc_dict_key]
             transition_dict = transition_dict_dict[transition_dict_key]
             for term, count in transition_dict.iteritems():
                 vocab.add(term)
@@ -804,18 +787,12 @@ def transition_dicts_to_matrix(transition_dict_dict):
         #print transition_dict_dict
         counter = 0
         for transition_dict_key in transition_dict_dict.keys():
-            #print "key", transition_dict_dict[cooc_dict_key]
             transition_dict = transition_dict_dict[transition_dict_key]
             for term, count in transition_dict.iteritems():
                 i = vocabulary.get(transition_dict_key[0])
                 j = vocabulary.get(term)
                 counter += count
-                #if transition_dict_key == 0 and term == 9089624:
-                    #print i, j, count, "bla"
-                #print "j", j
                 if i is not None and j is not None: 
-                    #if i == 0 and j == 277457:
-                        #print i, j, count
                     i_indices.append(i)                   
                     j_indices.append(j)
                     values.append(count)
@@ -828,7 +805,6 @@ def transition_dicts_to_matrix(transition_dict_dict):
 
         shape = (max(vocabulary.itervalues()) + 1, max(vocabulary.itervalues()) + 1)
         print shape
-        #print len(values)
         spmatrix = sp.coo_matrix((values, (i_indices, j_indices)),
                                  shape=shape, dtype=np.dtype(float))
         
