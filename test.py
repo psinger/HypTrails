@@ -32,6 +32,11 @@ for i in range(0,max_model+1):
     
     del markov
 
+#print some sample statistics (i.e., Akaike Information Criterion)
+lrts, pvals, dfs = mt.likelihood_ratio_test(likelihoods, parameters)
+aics = mt.akaike_information_criterion(lratios=lrts, dfs=dfs, null_model=max_model)
+print aics
+	
 evidences = {}
 
 #this is for the Bayesian case
