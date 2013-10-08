@@ -166,7 +166,7 @@ class MarkovChain():
         self.state_count_initial_ = float(len(states))
         self.parameter_count_ = pow(self.state_count_initial_, self.k_) * (self.state_count_initial_ - 1)
         print "initial state count", self.state_count_initial_
-        print self.states_initial_
+        #print self.states_initial_
         
     def fit(self, paths, ret=False):
         '''
