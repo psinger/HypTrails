@@ -129,15 +129,17 @@ class MarkovChain():
         ranked_key_dict = {} 
         n = v = 1
         for _, my_list in sorted(my_d.items(), reverse=True):
-            v = n + (len(my_list)-1)/2.
+            #v = n + (len(my_list)-1)/2.
+            v = n + len(my_list)-1
             for e in my_list:
                 n += 1
                 ranked_key_dict[e] = v
                 
         #little hack for storing the other unobserved average ranks
         #this is wanted so that we do not have to calculate it all the time again
-        ranked_key_dict[FAKE_ELEM] = n + ((self.state_count_initial_-len(ranked_key_dict)-1)/2.)
-        
+        #ranked_key_dict[FAKE_ELEM] = n + ((self.state_count_initial_-len(ranked_key_dict)-1)/2.)
+        ranked_key_dict[FAKE_ELEM] = self.state_count_initial_
+
         return ranked_key_dict
         
     def prepare_data(self, paths):
@@ -304,9 +306,11 @@ class MarkovChain():
         print evidence
         return evidence
     
-    def predict(self, test):
+    def predict(self, test, eval="rank"):
         '''
         Predicting sequencies using MLE
+        eval = choice between several evaluation metrics, "rank" is a ranked based approach and "top" checks whether
+                true state is in the top K ranks
         ''' 
         
         if self.modus_ != 'mle':
@@ -314,19 +318,21 @@ class MarkovChain():
         
         if self.use_prior_ != True:
             raise Exception("Prediction only works with smoothing on!")
-    
-        for k,v in self.transition_dict_.iteritems():       
-            #print v    
-            self.prediction_position_dict_[k] = self._dict_ranker(v)  
-  
+
+        if eval == "rank":
+            for k,v in self.transition_dict_.iteritems():
+                print v
+                self.prediction_position_dict_[k] = self._dict_ranker(v)
+
         known_states = frozenset(self.transition_dict_.keys())
         
         for line in test:
             #if self.k
             self.paths_test_.append(self.k_*[RESET_STATE] + [x for x in line] + [RESET_STATE])
 
-        position = 0
-        counter = 0
+        topx = 5
+        position = 0.
+        counter = 0.
         print "clicks test", len(self.paths_test_)
         
         for path in self.paths_test_:
@@ -337,15 +343,45 @@ class MarkovChain():
                 true_elem = path[j]
                 
                 if self.k_ == 0:
-                    p = self.prediction_position_dict_[FAKE_ELEM].get(true_elem,self.prediction_position_dict_[FAKE_ELEM][FAKE_ELEM])
+                    if eval == "rank":
+                        p = self.prediction_position_dict_[FAKE_ELEM].get(true_elem,self.prediction_position_dict_[FAKE_ELEM][FAKE_ELEM])
+                    elif eval == "top":
+                        row = self.transition_dict_[FAKE_ELEM]
+                        items = row.items()
+                        random.shuffle(items)
+                        row = OrderedDict(items)
+                        top = dict(sorted(row.iteritems(), key=operator.itemgetter(1), reverse=True)[:topx]).keys()
+                        if true_elem in top:
+                            p = 1
+                        else:
+                            p = 0
                 else:
                     #We go from an unknown state to some other
                     #We come up with an uniform prob distribution
                     if elem not in known_states:
-                        p = self.state_count_initial_ / 2.
+                        if eval == "rank":
+                            #p = self.state_count_initial_ / 2.
+                            p = self.state_count_initial_
+                        elif eval == "top":
+                            prob = topx / self.state_count_initial_
+                            if random.uniform <= prob:
+                                p = 1
+                            else:
+                                p = 0
                     #We go from a known/learned state to some other
                     else:
-                        p = self.prediction_position_dict_[elem].get(true_elem,self.prediction_position_dict_[elem][FAKE_ELEM])
+                        if eval == "rank":
+                            p = self.prediction_position_dict_[elem].get(true_elem,self.prediction_position_dict_[elem][FAKE_ELEM])
+                        elif eval == "top":
+                            row = self.transition_dict_[elem]
+                            items = row.items()
+                            random.shuffle(items)
+                            row = OrderedDict(items)
+                            top = dict(sorted(row.iteritems(), key=operator.itemgetter(1), reverse=True)[:topx]).keys()
+                            if true_elem in top:
+                                p = 1
+                            else:
+                                p = 0
 
                 position += p
                 counter += 1
