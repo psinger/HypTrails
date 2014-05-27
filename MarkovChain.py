@@ -1,3 +1,5 @@
+from __future__ import division
+
 '''
 Created on 14.01.2013
 
