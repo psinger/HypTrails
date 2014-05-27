@@ -8,4 +8,4 @@ The framework includes several advanced methods for determining the appropriate 
 
 For a basic introduction to the framework please refer to the test example. For further questions please conduct the issues section or drop me an email!
 
-![Alt Text](https://zenodo.org/badge/4207/psinger/PathTools.png)
+![Alt Text](https://zenodo.org/badge/doi/10.5281/zenodo.10154.png)
