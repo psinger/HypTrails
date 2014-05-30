@@ -11,4 +11,4 @@ For a basic introduction to the framework please refer to the test examples. For
 
 [1] Philipp Singer, Thomas Niebler, Markus Strohmaier and Andreas Hotho, Computing Semantic Relatedness from Human Navigational Paths: A Case Study on Wikipedia, International Journal on Semantic Web and Information Systems (IJSWIS), vol 9(4), 41-70, 2013
 
-![Alt Text](https://zenodo.org/badge/doi/10.5281/zenodo.10154.png)
+![Alt Text](https://zenodo.org/badge/4207/psinger/PathTools.png)
