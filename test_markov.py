@@ -8,7 +8,16 @@ import numpy as np
 from MarkovChain import MarkovChain
 import MarkovTools as mt
 
-paths = np.array([[1,1,2,1,3], [3,3,1,1,2], [2,1,2,3,1,1,1,1,3]])
+#paths = np.array([[1,1,2,1,3], [3,3,1,1,2], [2,1,2,3,1,1,1,1,3]])
+paths = []
+with open("data/test_case_1") as f:
+    for line in f:
+        if line.strip() == "":
+            continue
+        line = line.strip().split(" ")
+        #print line
+        paths.append(np.array(line))
+
 
 max_model = 5
 
