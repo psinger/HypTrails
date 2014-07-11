@@ -59,12 +59,12 @@ class PathSim():
             # free memory as we go
             cooc_dict.clear()
 
-        #print len(i_indices)
-        #print len(j_indices)
-        #print len(values)
+        print len(i_indices)
+        print len(j_indices)
+        print len(values)
 
         shape = (max(vocabulary.itervalues()) + 1, max(vocabulary.itervalues()) + 1)
-        #print shape
+        print shape
         #print len(values)
         spmatrix = sp.csr_matrix((values, (i_indices, j_indices)),
                                  shape=shape, dtype=self.dtype_)
@@ -72,7 +72,7 @@ class PathSim():
             spmatrix.data.fill(1)
         
         self.coocs_ = spmatrix
-        #print spmatrix.shape
+        print spmatrix.shape
     
     def fit(self, paths, check_only = None):
         '''

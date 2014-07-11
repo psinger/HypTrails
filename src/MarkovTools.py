@@ -1,16 +1,63 @@
+from __future__ import division
+
 '''
 Created on 20.02.2013
 
 @author: Killver
 '''
+import matplotlib
 
-import matplotlib.pyplot as plt
+
+
+import prettyplotlib as ppl
+import numpy as np
+
+# prettyplotlib imports
+from matplotlib import pyplot as plt
+import pylab
+params = {'font.size' : 12,
+          'axes.labelsize' : 12,
+          #'ps.useafm': True,
+          #"ps.usecorefonts": True,
+          #'pdf.use14corefonts' : True,
+          'pdf.fonttype': 42,
+          'text.usetex': False,
+          #'font.style' : 'normal',
+          'font.family' : 'sans-serif',
+          'font.sans-serif' : ['Arial']
+        #'font.sans-serif' : 'Times'
+}
+pylab.rcParams.update(params)
+
+# import matplotlib.pyplot as plt
+# plt.rc('font', family='serif')
+# plt.rc('font', serif='Times')
+
+
+import matplotlib as mpl
+from prettyplotlib import brewer2mpl
+
+# Set the random seed for consistency
+np.random.seed(12)
+
+#matplotlib.rcParams.update({'ps.useafm':True})
+#matplotlib.rcParams.update({'pdf.use14corefonts':True})
+#matplotlib.rcParams['ps.fonttype'] = 42
+#matplotlib.rcParams.update({'pdf.fonttype':42})
+# matplotlib.rcParams.update({'text.usetex': False})
+# matplotlib.rcParams.update({'font.type': "sans-serif"})
+# matplotlib.rcParams.update({'font.serif': "Times"})
+# matplotlib.rcParams.update({'font.size': 12})
+# matplotlib.rcParams.update({'legend.fontsize':12})
+
+
 import numpy as np
 from scipy import stats
 import math
 import types
 import copy
-import scipy.sparse as sp    
+import scipy.sparse as sp
+import math
 
 def likelihood_ratio_test(l, p):
     '''
@@ -116,7 +163,7 @@ def bayesian_model_selection(evidences, params, penalty = False):
 LATEX AND PLOT HELPER FUNCTIONS
 '''
 
-def lrt_table_single(lratios, pvals, caption, label, filename, header=None):
+def lrt_table_single(lratios, pvals, caption, label, filename, header=None, ax=None):
     '''
     Provides latex table syntax given two dictionaries of lrt statistics
     Just prints lratios with statistical significance
@@ -125,6 +172,10 @@ def lrt_table_single(lratios, pvals, caption, label, filename, header=None):
     pvals = pvals (chi2)
     header = the header of the table, if None no header will be used
     '''
+
+    #from matplotlib import rc
+    #rc('text', usetex=True)
+
     string = ""
     string += "\\begin{tabular}[b]{|c|l|} \\hline"
     string += "\n"
@@ -132,7 +183,9 @@ def lrt_table_single(lratios, pvals, caption, label, filename, header=None):
     if header != None:
         string += " & ".join(header) + "\\\\ \\hline"
         string += "\n"
-    
+
+    rows = list()
+
     for i in sorted(lratios.keys()):
         first = i[0]
         second = i[1]
@@ -140,14 +193,18 @@ def lrt_table_single(lratios, pvals, caption, label, filename, header=None):
             continue
         model = "${_" + str(first) + "}\eta{_" + str(second) + "}$"
         #p = "%.10f" % 
-        lr_string = str(round(lratios[i],4))
+        lr_string = str("%0.02f" %round(lratios[i],4))
+        sig = ""
         if pvals[i] < 0.01:
-            lr_string += "*"
+            sig += "*"
         if pvals[i] < 0.001:
-            lr_string += "*"
+            sig += "*"
+        lr_string = sig + lr_string
         string += model + " & " + lr_string + " \\\\ \\hline"
         string += "\n"
-        
+
+        rows.append((model,lr_string))
+
     string += "\\end{tabular}"
     string += "\n"
     string += "\\caption{" + caption + "}"
@@ -158,6 +215,25 @@ def lrt_table_single(lratios, pvals, caption, label, filename, header=None):
     
     with open(filename, "w") as text_file:
         text_file.write(string)
+
+
+    nrows, ncols = len(rows)+1, len(header)
+    hcell, wcell =  0.3, 1
+    hpad, wpad = 0.5, 0
+    #fig=plt.figure(figsize=(ncols*wcell+wpad, nrows*hcell+hpad))
+    #fig, axes = plt.subplots(nrows=2,ncols=3)
+    #4*nrows*hcell+hpad
+    #ax = axes[0][1]
+    ax.axis('off')
+    #do the table
+    table = ax.table(cellText=rows,
+              colLabels=header,
+              loc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(12)
+    table.scale(1,1.15)
+    #plt.show()
+
 
 def lrt_table_single_combined(lratios1, pvals1, lratios2, pvals2, caption, label, filename, header=None):
     '''
@@ -182,8 +258,9 @@ def lrt_table_single_combined(lratios1, pvals1, lratios2, pvals2, caption, label
         second = i[1]
         if first == second:
             continue
-        model = "${_" + str(first) + "}\eta{_" + str(second) + "}$"
-        #p = "%.10f" % 
+        #model = "${_" + str(first) + "}\eta{_" + str(second) + "}$"
+        model = "1"
+        #p = "%.10f" %
         lr_string1 = str(round(lratios1[i],4))
         if pvals1[i] < 0.01:
             lr_string1 += "*"
@@ -305,14 +382,18 @@ def lrt_table(lratios, pvals, dfs, caption, label, filename, header=None):
     with open(filename, "w") as text_file:
         text_file.write(string)
 
-def plot_kvalues(l, xlabel, ylabel, filename, mark = "high"):
+def plot_kvalues(l, xlabel, ylabel, filename, mark = "high", ax=None):
     '''
     Plotting the likelihoods given in dictionary
     mark = 'high' or 'low'
     '''
-    plt.figure()
-    plt.plot(l.keys(), l.values(), marker='o')
-    
+    if ax == None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+    ppl.plot(ax, l.keys(), l.values(), marker='o', clip_on = False)
+    #ax.plot(l.keys(), l.values(), marker='o', clip_on = False)
+
     markers_x = []
     markers_y = []
     for k,v in l.iteritems():
@@ -324,25 +405,39 @@ def plot_kvalues(l, xlabel, ylabel, filename, mark = "high"):
             if v == min(l.values()):
                 markers_x.append(k)
                 markers_y.append(v)
-    plt.plot(markers_x, markers_y, 'rD')
-    
+    ppl.plot(ax, markers_x, markers_y, 'rD', clip_on = False)
+    #ax.plot(markers_x, markers_y, 'rD', clip_on = False)
+
     #print min(l.keys())
     ticks = np.arange(min(l.keys()), max(l.keys())+1)
     #print ticks
-    plt.xticks(ticks)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)    
+    ax.set_xticks(ticks)
+
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
     #plt.show()
-    plt.savefig(filename)
-    
-def plot_kvalues_dual(l1, l2, xlabel, ylabel, labels, filename, loc = 4, mark = "low"):
+    #plt.savefig(filename)
+
+
+
+def plot_kvalues_dual(l1, l2, xlabel, ylabel, labels, filename, loc = 6, mark = "low", ax = None):
     '''
     Plotting the likelihoods given two dictionaries
     '''
-    
-    plt.figure()
+
+    #if ax == None:
+     #   fig, axes = plt.subplots(nrows=2)
+
+    # Twin the x-axis
+
+
+    ticks = np.arange(min(l1.keys()), max(l1.keys())+1)
+    ticks = ticks
+
     markers_on = [1,2]
-    plt.plot(l1.keys(), l1.values(), label=labels[0], marker='o', color = "b")
+    ppl.plot(ax[0], l1.keys(), l1.values(), label=labels[0], marker='o', color = "b", clip_on = False)
     #mark value
     markers_first_x = []
     markers_first_y = []
@@ -355,9 +450,19 @@ def plot_kvalues_dual(l1, l2, xlabel, ylabel, labels, filename, loc = 4, mark = 
             if v == min(l1.values()):
                 markers_first_x.append(k)
                 markers_first_y.append(v)
-    plt.plot(markers_first_x, markers_first_y, 'rD')
-    
-    plt.plot(l2.keys(), l2.values(), label=labels[1], marker='o', color = "g") 
+    ppl.plot(ax[0], markers_first_x, markers_first_y, 'rD', clip_on = False)
+    ax[0].set_ylabel(ylabel[0])
+    ax[0].set_xlabel(xlabel)
+    #axes[0].tick_params(axis="y", colors="b")
+    print markers_first_x[0]-1,markers_first_x[0]+2
+    print l1.keys()[markers_first_x[0]-1:markers_first_x[0]+2]
+
+    #ax2 = fig.add_axes([.25, .65, 0.20, 0.20])fig.add_axes(axes[0].get_position(), frameon=True)
+    #ax2.plot(l1.keys()[markers_first_x[0]-1:markers_first_x[0]+2], l1.values()[markers_first_x[0]-1:markers_first_x[0]+2], marker='o', color = "b")
+    #ax2.xaxis.set_ticks(ticks[markers_first_x[0]-1:markers_first_x[0]+2])
+    #ax2.plot(markers_first_x, markers_first_y, 'rD')
+
+    ppl.plot(ax[1], l2.keys(), l2.values(), label=labels[1], marker='o', color = "g", clip_on = False)
     #mark lowest value
     markers_second_x = []
     markers_second_y = []
@@ -370,16 +475,61 @@ def plot_kvalues_dual(l1, l2, xlabel, ylabel, labels, filename, loc = 4, mark = 
             if v == min(l2.values()):
                 markers_second_x.append(k)
                 markers_second_y.append(v)
-    plt.plot(markers_second_x, markers_second_y, 'rD')
-     
-    ticks = np.arange(min(l1.keys()), max(l1.keys())+1)
+    ppl.plot(ax[1], markers_second_x, markers_second_y, 'rD', clip_on = False)
+    ax[1].set_ylabel(ylabel[1])
+    ax[1].set_xlabel(xlabel)
+    #axes[1].tick_params(axis="y", colors="g")
+
+    #ax3 = fig.add_axes([.25, .20, 0.20, 0.20])#fig.add_axes(axes[0].get_position(), frameon=True)
+    #ax3.plot(l2.keys()[markers_second_x[0]-1:markers_second_x[0]+2], l2.values()[markers_second_x[0]-1:markers_second_x[0]+2], marker='o', color = "b")
+    #ax3.xaxis.set_ticks(ticks[markers_second_x[0]-1:markers_second_x[0]+2])
+    #ax3.plot(markers_second_x, markers_second_y, 'rD')
+    #ax3.set_yscale('symlog')
+
     print ticks
-    plt.xticks(ticks)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)   
-    plt.legend(loc=loc) 
+    ax[0].xaxis.set_ticks(ticks)
+    ax[0].legend(loc=loc)
+    ax[1].xaxis.set_ticks(ticks)
+    ax[1].legend(loc=loc)
+
+    # digit = 3
+    #
+    # lower = int(abs(l1.values()[0]))
+    # print lower
+    # lower = -1 * int(math.ceil(lower/math.pow(10,len(str(abs(lower)))-digit))) * math.pow(10,len(str(abs(lower)))-digit)
+    # print lower
+    #
+    # upper = int(abs(l1.values()[-2]))
+    # print upper
+    # upper = -1 * int(math.floor(upper/math.pow(10,len(str(abs(upper)))-digit))) * math.pow(10,len(str(abs(upper)))-digit)
+    # print upper
+    #
+    #
+    # lower = -3.15*pow(10,7)
+    # upper = -2.9*pow(10,7)
+    #
+    # print lower, upper
+    #
+    # axes[0].set_ylim([lower, upper])
+    #
+    # lower = int(abs(l2.values()[0]))
+    # lower = -1 * int(math.ceil(lower/math.pow(10,len(str(abs(lower)))-2))) * math.pow(10,len(str(abs(lower)))-2)
+    #
+    # upper = int(abs(l2.values()[-2]))
+    # upper = -1 * int(math.floor(upper/math.pow(10,len(str(abs(upper)))-2))) * math.pow(10,len(str(abs(upper)))-2)
+    #
+    # axes[1].set_ylim([lower, upper])
+
+    #axes[1].set_xlim([0,4.2])
+
+    #plt.xlabel(xlabel)
+    #plt.ylabel(ylabel)
+    #handles, labels = ax.get_legend_handles_labels()
+
+# reverse the order
+    #ax.legend(handles[::-1], labels[::-1], loc=loc)
     #plt.show()
-    plt.savefig(filename)
+    #plt.savefig(filename)
     
 def plot_kvalues_trip(l1, l2, l3, xlabel, ylabel, labels, filename, loc = 4, mark = "low"):
     '''
@@ -439,7 +589,7 @@ def plot_kvalues_trip(l1, l2, l3, xlabel, ylabel, labels, filename, loc = 4, mar
     plt.xticks(ticks)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)   
-    plt.legend(loc=loc) 
+    plt.legend(loc=loc)
     #plt.show()
 
     plt.savefig(filename)
@@ -626,20 +776,27 @@ def plot_kvalues_six(l1, l2, l3, l4, l5, l6, xlabel, ylabel, labels, filename, l
 
     plt.savefig(filename)
 
-def plot_kvalues_barchart_dual(l1, l2, xlabel, ylabel, labels, filename, loc = 4):
+def plot_kvalues_barchart_dual(l1, l2, xlabel, ylabel, labels, filename, ax= None, loc = 4):
     '''
     Plotting the likelihoods given two dictionaries barchart
     '''
     
     ind = np.arange(len(l1))
     width = 0.35
+
+    if ax == None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
     
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
+    rects1 = ppl.bar(ax, ind, l1.values(), width, color='b')
+    rects2 = ppl.bar(ax, ind+width, l2.values(), width, color='g')
     
-    rects1 = ax.bar(ind, l1.values(), width, color='b')
-    rects2 = ax.bar(ind+width, l2.values(), width, color='g')
     
+    #plt.bar(l1.keys(), l1.values(), label=labels[0])
+    #plt.bar(l2.keys(), l2.values(), label=labels[1]) 
+     
+    #ticks = np.arange(min(l1.keys()), max(l1.keys())+1)
+    #print ticks
     ax.set_xticks(ind+width)
     ax.set_xticklabels( tuple([str(x) for x in l1.keys()]) )
     
@@ -668,6 +825,11 @@ def plot_kvalues_barchart_quat(l1, l2, l3, l4, xlabel, ylabel, labels, filename,
     rects3 = ax.bar(ind, l3.values(), width=width, color='g')
     rects4 = ax.bar(ind+width, l4.values(),hatch="//", width=width,  color='g')
     
+    #plt.bar(l1.keys(), l1.values(), label=labels[0])
+    #plt.bar(l2.keys(), l2.values(), label=labels[1]) 
+     
+    #ticks = np.arange(min(l1.keys()), max(l1.keys())+1)
+    #print ticks
     ax.set_xticks(ind+width)
     ax.set_xticklabels( tuple([str(x) for x in l1.keys()]) )
     
@@ -699,7 +861,11 @@ def plot_kvalues_barchart_six(l1, l2, l3, l4, l5, l6, xlabel, ylabel, labels, fi
     rects5 = ax.bar(ind+0.25, l5.values(), width=width, color='g')
     rects6 = ax.bar(ind+0.50, l6.values(),hatch="//", width=width,  color='g')
     
-
+    #plt.bar(l1.keys(), l1.values(), label=labels[0])
+    #plt.bar(l2.keys(), l2.values(), label=labels[1]) 
+     
+    #ticks = np.arange(min(l1.keys()), max(l1.keys())+1)
+    #print ticks
     ax.set_xticks(ind+width*2)
     ax.set_xticklabels( tuple([str(x) for x in l1.keys()]) )
     
@@ -768,10 +934,12 @@ def transition_dicts_to_matrix(transition_dict_dict):
         i_indices = []
         j_indices = []
         values = []
+        #vocabulary = self.vocabulary_
 
         vocab = set()
 
         for transition_dict_key in transition_dict_dict.keys():
+            #print "key", transition_dict_dict[cooc_dict_key]
             transition_dict = transition_dict_dict[transition_dict_key]
             for term, count in transition_dict.iteritems():
                 vocab.add(term)
@@ -787,12 +955,18 @@ def transition_dicts_to_matrix(transition_dict_dict):
         #print transition_dict_dict
         counter = 0
         for transition_dict_key in transition_dict_dict.keys():
+            #print "key", transition_dict_dict[cooc_dict_key]
             transition_dict = transition_dict_dict[transition_dict_key]
             for term, count in transition_dict.iteritems():
                 i = vocabulary.get(transition_dict_key[0])
                 j = vocabulary.get(term)
                 counter += count
+                #if transition_dict_key == 0 and term == 9089624:
+                    #print i, j, count, "bla"
+                #print "j", j
                 if i is not None and j is not None: 
+                    #if i == 0 and j == 277457:
+                        #print i, j, count
                     i_indices.append(i)                   
                     j_indices.append(j)
                     values.append(count)
@@ -805,6 +979,7 @@ def transition_dicts_to_matrix(transition_dict_dict):
 
         shape = (max(vocabulary.itervalues()) + 1, max(vocabulary.itervalues()) + 1)
         print shape
+        #print len(values)
         spmatrix = sp.coo_matrix((values, (i_indices, j_indices)),
                                  shape=shape, dtype=np.dtype(float))
         
