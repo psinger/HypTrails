@@ -4,7 +4,7 @@ Created on 30.05.2014
 @author: psinger
 '''
 
-from PathSim import PathSim
+from src.PathSim import PathSim
 import numpy as np
 
 for window_size in [2, 3]:

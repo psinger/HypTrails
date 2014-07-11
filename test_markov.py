@@ -5,8 +5,8 @@ Created on 09.09.2013
 '''
 
 import numpy as np
-from MarkovChain import MarkovChain
-import MarkovTools as mt
+from src.MarkovChain import MarkovChain
+import src.MarkovTools as mt
 
 #paths = np.array([[1,1,2,1,3], [3,3,1,1,2], [2,1,2,3,1,1,1,1,3]])
 paths = []

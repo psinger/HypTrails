@@ -262,15 +262,12 @@ class MarkovChain():
             
             done_counter = 0
             for x, c in v.iteritems():
-                print k[0]
-                sys.exit()
+
                 if self.specific_prior_[k][x]:
                     print "wooo"
                     prior = round(self.specific_prior_[k][x] * self.alpha_) + self.prior_
                 else:
                     prior = self.prior_
-                print len(self.specific_prior_.keys()[k])
-                sys.exit()
 
                 cp = c + prior
                               
