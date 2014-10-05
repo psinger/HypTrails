@@ -7,19 +7,21 @@ Created on 09.09.2013
 import numpy as np
 from src.MarkovChain import MarkovChain
 import src.MarkovTools as mt
+import sys
 
 #paths = np.array([[1,1,2,1,3], [3,3,1,1,2], [2,1,2,3,1,1,1,1,3]])
 paths = []
-with open("data/test_case_1") as f:
+with open("data/test_case_2") as f:
     for line in f:
         if line.strip() == "":
             continue
         line = line.strip().split(" ")
+        print len(line)
         #print line
         paths.append(np.array(line))
 
 
-max_model = 5
+max_model = 3
 
 likelihoods = {}
 parameters = {}
@@ -29,7 +31,7 @@ state_count_initial = {}
 
 #this is for the MLE case
 for i in range(0,max_model+1):
-    markov = MarkovChain(k=i, use_prior=False, reset = True, modus="mle")
+    markov = MarkovChain(k=i, use_prior=False, reset = False, modus="mle")
     markov.prepare_data(paths)
     markov.fit(paths)
     
@@ -41,11 +43,22 @@ for i in range(0,max_model+1):
     
     del markov
 
+print likelihoods
+
+
 #print some sample statistics (i.e., Akaike Information Criterion)
 lrts, pvals, dfs = mt.likelihood_ratio_test(likelihoods, parameters)
+print lrts
+print dfs
+
+#sys.exit()
+
+
 aics = mt.akaike_information_criterion(lratios=lrts, dfs=dfs, null_model=max_model)
 print aics
-	
+
+sys.exit()
+
 evidences = {}
 
 #this is for the Bayesian case

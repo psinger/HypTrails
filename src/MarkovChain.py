@@ -19,16 +19,20 @@ import math
 #import operator
 #from scipy import stats
 from scipy.special import gammaln
+from scipy.sparse import csr_matrix, coo_matrix
 #from scipy.special import gamma
 #import copy
 #from random import choice
+import itertools
+import copy
+import tables as tb
 
 RESET_STATE = "-1"
 
-UNKNOWN_STATE = 1
+UNKNOWN_STATE = "1"
 
 #we need this for k = 0
-FAKE_ELEM = -10
+FAKE_ELEM = "-10"
 
 #Prior
 #PRIOR = 1.00
@@ -38,7 +42,7 @@ class MarkovChain():
     Class for fitting a Markov chain of arbitrary order
     '''
 
-    def __init__(self, k=1, reverse=False, use_prior=False, reset=True, prior=1., specific_prior = None, alpha = 0., modus="mle"):
+    def __init__(self, k=1, reverse=False, use_prior=False,  reset=True, prior=1., specific_prior = None, specific_prior_vocab = None, modus="mle"):
         '''
         Constructor
         modus = specifies the modus of the class, there are two possibilities: modus='mle' is focused on working with mle matrices representing probabilities
@@ -76,20 +80,23 @@ class MarkovChain():
         self.use_prior_ = use_prior
         self.prior_ = prior
 
-        if specific_prior is None:      
-            self.specific_prior_ = defaultdict(lambda : defaultdict(float))
-        else:
-            self.specific_prior_ = specific_prior
+
+
+        self.specific_prior_ = specific_prior
+        self.specific_prior_vocab_ = specific_prior_vocab
+
         
         #print self.specific_prior_
-        if len(self.specific_prior_) > 0 and k != 1:
-            raise Exception("using specific priors with higher orders not yet implemented")
-        
-        self.alpha_ = alpha
-        
+        if self.specific_prior_ is not None and k != 1:
+            raise Exception("Using specific priors with higher orders not yet implemented!")
+        if self.specific_prior_ is not None and self.specific_prior_vocab_ is None:
+            raise Exception("Can't work with a specific prior without vocabulary information!")
+        if self.specific_prior_ is not None and self.modus_ != "bayes":
+            raise Exception("Specific prior only works mit Bayes modus!")
+
         self.proba_from_unknown_ = 0
         self.proba_to_unknown_ = dict()
-        
+
     def _dict_divider(self, d): 
         '''
         Internal function for dict divider and smoothing
@@ -103,8 +110,8 @@ class MarkovChain():
             
             for k, v in d.iteritems():
                 s = float(sum(v.values()))
-                smoothing_divider = float(sum([round(x*self.alpha_)+self.prior_ for x in self.specific_prior_[k].values()]))
-                smoothing_divider += float((self.state_count_initial_ - len(self.specific_prior_[k].values())) * self.prior_)
+                #smoothing_divider = float(sum([round(x*self.alpha_)+self.prior_ for x in self.specific_prior_[k].values()]))
+                #smoothing_divider += float((self.state_count_initial_ - len(self.specific_prior_[k].values())) * self.prior_)
                 
                 divider = s + smoothing_divider
                 self.observation_count_ += divider
@@ -172,7 +179,7 @@ class MarkovChain():
         self.state_count_initial_ = float(len(states))
         self.parameter_count_ = pow(self.state_count_initial_, self.k_) * (self.state_count_initial_ - 1)
         print "initial state count", self.state_count_initial_
-        print self.states_initial_
+        #print self.states_initial_
         
     def fit(self, paths, ret=False):
         '''
@@ -181,6 +188,7 @@ class MarkovChain():
         '''
         print "====================="
         print "K: ", self.k_
+        print "prior: ", self.prior_
         
         for line in paths:
             if self.reset_:
@@ -200,12 +208,11 @@ class MarkovChain():
                     self.transition_dict_[elemA][elemB] += 1
         
         #print self.transition_dict_
-        
 
         
         if self.modus_ == "mle":
             self._dict_divider(self.transition_dict_)
-        
+
         if ret:
             return self.transition_dict_
             
@@ -216,7 +223,11 @@ class MarkovChain():
     def loglikelihood(self):
         '''
         Calculating the log likelihood of the fitted MLE
-        '''     
+        '''
+
+        if self.modus_ != "mle":
+            raise Exception("Loglikelihood calculation does not work with modus='bayes'")
+
         likelihood = 0
         prop_counter = 0
         
@@ -236,38 +247,96 @@ class MarkovChain():
         print "likelihood", likelihood
         print "prop_counter", prop_counter
         return likelihood
- 
-    def bayesian_evidence(self):
+
+
+    #@profile
+    def bayesian_evidence(self, empirical_prior = 0, wrong_prior = 0):
         '''
         Calculating the bayesian evidence of the fitted MLE
+        empirical_prior and wrong_prior are just for testing
+        please do not use them except for testing
         '''
         if self.modus_ != "bayes":
             raise Exception("Bayesian evidence does not work with modus='mle'")
         
-        print "starting to do bayesian evidence calculation"
+        print "starting to do bayesian evidence calculation!!"
         
         evidence = 0
-        
+
+        counter = 0
 
         i = 0
+
+
+        print len(self.transition_dict_.keys())
+
+        #only works for order 1 atm
+        if self.reset_ == False:
+            allkeys = frozenset(self.transition_dict_.keys())
+            for s in self.states_initial_:
+                if (s,) not in allkeys:
+                    self.transition_dict_[(s,)] = {}
+
+        tmp = 0
+
         for k,v in self.transition_dict_.iteritems():
-            #print k
-            i += 1
+            tmp += 1
+            #if tmp % 100 == 0:
+                #print tmp
 
             first_term_enum = 0
             first_term_denom = 0        
             second_term_enum = 0
             second_term_denom = 0
 
-            
-            done_counter = 0
-            for x, c in v.iteritems():
+            #start with combining prior knowledge with real data
 
-                if self.specific_prior_[k][x]:
-                    print "wooo"
-                    prior = round(self.specific_prior_[k][x] * self.alpha_) + self.prior_
+            if self.specific_prior_ is not None and k[0] != RESET_STATE:
+                if isinstance(self.specific_prior_, csr_matrix):
+                    cx = self.specific_prior_.getrow(self.specific_prior_vocab_[k[0]])
+                elif isinstance(self.specific_prior_, tb.group.RootGroup):
+                    row = self.specific_prior_vocab_[k[0]]
+                    indptr_first = self.specific_prior_.indptr[row]
+                    indptr_second = self.specific_prior_.indptr[row+1]
+                    data = self.specific_prior_.data[indptr_first:indptr_second]
+                    indices = self.specific_prior_.indices[indptr_first:indptr_second]
+                    indptr = np.array([0,indices.shape[0]])
+                    if self.reset_:
+                        shape = (1, self.state_count_initial_-1)
+                    else:
+                        shape = (1, self.state_count_initial_)
+                    cx = csr_matrix((data, indices, indptr), shape=shape)
                 else:
-                    prior = self.prior_
+                    raise Exception("wrong specific prior format")
+
+            done = set()
+            done_counter = 0
+
+            # if rowmax_prior > 0:
+            #     tmp_max = max(v.values())
+            for x, c in v.iteritems():
+                prior = self.prior_ #+ (tmp_max - c) * 1.
+
+                if empirical_prior > 0:
+                    prior += empirical_prior
+
+
+
+              #  if self.empirical_prior_ > 0:
+               #     prior += (tmp_max - c) * self.empirical_prior_
+
+                if self.specific_prior_ is not None and k[0] != RESET_STATE and x != RESET_STATE:
+                    #print k[0], x
+                    #prior += self.specific_prior_[self.specific_prior_vocab_[k[0]], self.specific_prior_vocab_[x]]
+                    idx = self.specific_prior_vocab_[x]
+                    prior += cx[0, idx]
+
+                    done.add(idx)
+                    # if k[0] in self.specific_prior_:
+                    #     if x in self.specific_prior_[k[0]]:
+                    #         prior += self.specific_prior_[k[0]][x]
+
+                #print prior
 
                 cp = c + prior
                               
@@ -278,27 +347,57 @@ class MarkovChain():
                 second_term_denom += cp
                 
                 done_counter += 1
+                counter += prior
 
-            for c in [round(b*self.alpha_)+self.prior_ for a,b in self.specific_prior_[k].iteritems() if a not in v.keys()] :
-                first_term_enum += c
-                first_term_denom += gammaln(c)
-                
-                second_term_enum += gammaln(c)
-                second_term_denom += c
+            done = frozenset(done)
 
-                done_counter += 1
+
+
+            #now lets add all prior information for which we do NOT have real data
+            if self.specific_prior_ is not None and k[0] != RESET_STATE:#
+
+                #if k[0] in self.specific_prior_:
+                 #   for c in [b+self.prior_ for a,b in self.specific_prior_[k[0]].iteritems() if a not in v.keys()] :
+
+                #cx = coo_matrix(self.specific_prior_.getrow(self.specific_prior_vocab_[k[0]]))
+                #cx = self.specific_prior_.getrow(self.specific_prior_vocab_[k[0]]).tocoo()
+                cx = cx.tocoo()
+                for i,j,c in itertools.izip(cx.row, cx.col, cx.data):
+                    #print "(%d, %d), %s" % (i,j,v)
+
+                    #if self.specific_prior_vocab_reverse_[j] not in v.keys():
+                    if j not in done:
+                        c += self.prior_
+                        first_term_enum += c
+                        first_term_denom += gammaln(c)
+
+                        second_term_enum += gammaln(c)
+                        second_term_denom += c
+
+                        done_counter += 1
+
+                        counter += c
 
             
-
+            #finally, we also need to cover those cases where no prior and no real data is available
             non_trans_count = int(self.state_count_initial_ - done_counter)
 
-            first_term_enum += (self.prior_ * non_trans_count)
+            prior = self.prior_
+
+            if wrong_prior > 0:
+                prior += wrong_prior#(tmp_max) * rowmax_prior
+
+            counter += prior * non_trans_count
+
+            #maybe I can skip this
+            first_term_enum += (prior * non_trans_count)
             
-            first_term_denom += (gammaln(self.prior_) * non_trans_count)
+            first_term_denom += (gammaln(prior) * non_trans_count)
 
-            second_term_enum += (gammaln(self.prior_) * non_trans_count)
-            second_term_denom += (self.prior_ * non_trans_count)
+            second_term_enum += (gammaln(prior) * non_trans_count)
+            second_term_denom += (prior * non_trans_count)
 
+            #do the final calculation
             first_term_enum = gammaln(first_term_enum)
             first_term = first_term_enum - first_term_denom
             
@@ -308,13 +407,15 @@ class MarkovChain():
 
             evidence += (first_term + second_term)
 
-        print "final: %.30f" %evidence 
+        #print "final: %.30f" %evidence
         print evidence
+        #print self.prior_, empirical_prior, wrong_prior
+        print "pseudo counts: ", counter
         return evidence
     
-    def predict(self, test, eval="rank"):
+    def predict_eval(self, test, eval="rank"):
         '''
-        Predicting sequencies using MLE
+        Evaluating via predicting sequencies using MLE
         eval = choice between several evaluation metrics, "rank" is a ranked based approach and "top" checks whether
                 true state is in the top K ranks
         ''' 
@@ -350,7 +451,9 @@ class MarkovChain():
                 
                 if self.k_ == 0:
                     if eval == "rank":
-                        p = self.prediction_position_dict_[FAKE_ELEM].get(true_elem,self.prediction_position_dict_[FAKE_ELEM][FAKE_ELEM])
+                        p = self.prediction_position_dict_[FAKE_ELEM].get(true_elem,
+                                                                          self.prediction_position_dict_[FAKE_ELEM][
+                                                                              FAKE_ELEM])
                     elif eval == "top":
                         row = self.transition_dict_[FAKE_ELEM]
                         items = row.items()
@@ -377,7 +480,9 @@ class MarkovChain():
                     #We go from a known/learned state to some other
                     else:
                         if eval == "rank":
-                            p = self.prediction_position_dict_[elem].get(true_elem,self.prediction_position_dict_[elem][FAKE_ELEM])
+                            p = self.prediction_position_dict_[elem].get(true_elem,
+                                                                         self.prediction_position_dict_[elem][
+                                                                             FAKE_ELEM])
                         elif eval == "top":
                             row = self.transition_dict_[elem]
                             items = row.items()

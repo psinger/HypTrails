@@ -27,7 +27,7 @@ params = {'font.size' : 12,
           'font.sans-serif' : ['Arial']
         #'font.sans-serif' : 'Times'
 }
-pylab.rcParams.update(params)
+#pylab.rcParams.update(params)
 
 # import matplotlib.pyplot as plt
 # plt.rc('font', family='serif')
@@ -382,7 +382,7 @@ def lrt_table(lratios, pvals, dfs, caption, label, filename, header=None):
     with open(filename, "w") as text_file:
         text_file.write(string)
 
-def plot_kvalues(l, xlabel, ylabel, filename, mark = "high", ax=None):
+def plot_kvalues(l, xlabel, ylabel, filename = "test.pdf", mark = "high", ax=None):
     '''
     Plotting the likelihoods given in dictionary
     mark = 'high' or 'low'
@@ -391,12 +391,14 @@ def plot_kvalues(l, xlabel, ylabel, filename, mark = "high", ax=None):
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-    ppl.plot(ax, l.keys(), l.values(), marker='o', clip_on = False)
-    #ax.plot(l.keys(), l.values(), marker='o', clip_on = False)
+    #ppl.plot(ax, l.keys(), l.values(), marker='o', clip_on = False)
+    ax.plot(l.keys(), l.values(), marker='o', clip_on = False)
 
     markers_x = []
     markers_y = []
     for k,v in l.iteritems():
+        if mark == None:
+            break
         if mark == "high":
             if v == max(l.values()):
                 markers_x.append(k)
@@ -405,13 +407,15 @@ def plot_kvalues(l, xlabel, ylabel, filename, mark = "high", ax=None):
             if v == min(l.values()):
                 markers_x.append(k)
                 markers_y.append(v)
-    ppl.plot(ax, markers_x, markers_y, 'rD', clip_on = False)
-    #ax.plot(markers_x, markers_y, 'rD', clip_on = False)
+    #ppl.plot(ax, markers_x, markers_y, 'rD', clip_on = False)
+    ax.plot(markers_x, markers_y, color='#A60628', marker='D', clip_on = False)
 
     #print min(l.keys())
-    ticks = np.arange(min(l.keys()), max(l.keys())+1)
-    #print ticks
+    #ticks = np.arange(min(l.keys()), max(l.keys())+1)
+    ticks = l.keys()
     ax.set_xticks(ticks)
+    #print ticks
+    #ax.set_xticklabels(ticklabels)
 
 
     ax.set_xlabel(xlabel)
