@@ -51,7 +51,8 @@ class MarkovChain():
         use_prior = flag if script should use a prior
         reset = flag for using generic reset state
         prior = prior
-        specific_prior = dictionary of specific priors for specific term combinations
+        specific_prior = sparse matrix of specific prior configurations (can also be a hdf5 matrix)
+        specific_prior_vocab = dictionary of vocabulary that matches state names with indices of the specific_prior matrix
         '''
         self.k_ = k
         self.reset_ = reset
