@@ -268,7 +268,7 @@ class MarkovChain():
         i = 0
 
 
-        print len(self.transition_dict_.keys())
+        #print len(self.transition_dict_.keys())
 
         #only works for order 1 atm
         if self.reset_ == False:
@@ -408,7 +408,7 @@ class MarkovChain():
             evidence += (first_term + second_term)
 
         #print "final: %.30f" %evidence
-        print evidence
+        print "evidence", evidence
         #print self.prior_, empirical_prior, wrong_prior
         print "pseudo counts: ", counter
         return evidence
