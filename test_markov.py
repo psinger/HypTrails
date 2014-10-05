@@ -57,8 +57,6 @@ print dfs
 aics = mt.akaike_information_criterion(lratios=lrts, dfs=dfs, null_model=max_model)
 print aics
 
-sys.exit()
-
 evidences = {}
 
 #this is for the Bayesian case
