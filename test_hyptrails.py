@@ -1,5 +1,10 @@
 from __future__ import division
 
+'''
+This script is a simple example to show
+how to use our HypTrails approach.
+'''
+
 __author__ = 'psinger'
 
 import numpy as np
