@@ -2,7 +2,9 @@ from __future__ import division
 
 '''
 This script is a simple example to show
-how to use our HypTrails approach.
+how to use a specific prior.
+This is mainly used for the HypTrails approach
+which can be fetched from https://github.com/psinger/HypTrails
 '''
 
 __author__ = 'psinger'
@@ -23,7 +25,7 @@ with open("data/test_case_3") as f:
 
 #this is without a specific prior
 evidences = {}
-markov = MarkovChain(k=1, use_prior=True, reset = True, modus="bayes")
+markov = MarkovChain(use_prior=True, reset = True, modus="bayes")
 markov.prepare_data(paths)
 markov.fit(paths)
 
@@ -40,7 +42,7 @@ specific_prior = csr_matrix(np.array([[10,3],[4,1]]))
 #need a vocab for assigning indices of the specific prior to a vocabulary
 vocab = dict({"0":0, "1":1})
 
-markov = MarkovChain(k=1, use_prior=True, reset = True, specific_prior=specific_prior,specific_prior_vocab=vocab, modus="bayes")
+markov = MarkovChain(use_prior=True, reset = True, specific_prior=specific_prior,specific_prior_vocab=vocab, modus="bayes")
 markov.prepare_data(paths)
 markov.fit(paths)
 
