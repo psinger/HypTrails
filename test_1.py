@@ -53,6 +53,7 @@ A = A.tocsr()
 #only informative part
 chips = 25
 
+
 prior = distr_chips(A, chips)
 
 #prior=1. refers to the uniform part
