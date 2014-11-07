@@ -57,7 +57,7 @@ chips = 25
 prior = distr_chips(A, chips)
 
 #prior=1. refers to the uniform part
-markov = pt.MarkovChain(k=1, use_prior=True, reset = True, prior=1., specific_prior=prior,
+markov = pt.MarkovChain(use_prior=True, reset = True, prior=1., specific_prior=prior,
                                     specific_prior_vocab = vocab, modus="bayes")
 markov.prepare_data(trails)
 markov.fit(trails)
@@ -72,7 +72,7 @@ A.setdiag(1.)
 A = A.tocsr()
 prior = distr_chips(A, chips)
 
-markov = pt.MarkovChain(k=1, use_prior=True, reset = True, prior=1., specific_prior=prior,
+markov = pt.MarkovChain(use_prior=True, reset = True, prior=1., specific_prior=prior,
                                     specific_prior_vocab = vocab, modus="bayes")
 markov.prepare_data(trails)
 markov.fit(trails)
