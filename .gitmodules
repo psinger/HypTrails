@@ -1,0 +1,3 @@
+[submodule "PathTools"]
+	path = PathTools
+	url = git@github.com:psinger/PathTools.git
