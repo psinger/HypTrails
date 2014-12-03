@@ -73,6 +73,84 @@ def distr_chips(matrix, chips):
 
     return floored
 
+def distr_chips_row(matrix, chips):
+    '''
+    Trial roulette method for eliciting Dirichlet priors from
+    expressed hypothesis matrix.
+    This method works for single row matrices with the condition that
+    each row is the same.
+    Note that only the informative part is done here.
+    :param matrix: csr_matrix A_k expressing theory H_k
+    :param chips: number of chips C to distribute
+    :return: Dirichlet pseudo clicks in the shape of a matrix
+    '''
+
+    print "chips", chips
+
+    len = matrix.shape()[1]
+
+    chips = chips / len
+
+    if chips.is_integer() == False:
+        raise Exception, "Only use C = |S|^2 * k"
+
+    sum = matrix.sum()
+    sum *= len
+
+
+    #it may make sense to do this in the outer scripts for memory reasons
+    matrix = (matrix / sum) * chips
+
+    print "matrix nnz", matrix.nnz
+    print matrix.max()
+
+
+    print "normalization done"
+    print "matrix nnz", matrix.nnz
+    print matrix.max()
+
+    floored = matrix.floor()
+
+    print "flooring done"
+
+    print "floored sum", floored.sum()
+
+
+    rest_sum = int(chips - floored.sum())
+
+    print "rest sum", rest_sum
+
+    matrix = matrix - floored
+    print matrix.data.shape, floored.data.shape
+
+    idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
+
+    i, j = matrix.nonzero()
+
+    i_idx = i[idx]
+    j_idx = j[idx]
+
+    if len(i_idx) > 0:
+        floored[i_idx, j_idx] += 1
+
+    print "final sum", floored.sum()
+
+    print matrix.data.shape, floored.data.shape
+
+    #assert(matrix.data.shape == floored.data.shape)
+
+    floored.eliminate_zeros()
+
+    print type(floored)
+
+    del matrix
+
+    print "prior calc done"
+
+    print floored.nnz
+
+    return floored
+
 def hdf5_save(matrix, filename, dtype=np.dtype(np.float64)):
     '''
     Helper function for storing scipy matrices as PyTables HDF5 matrices
