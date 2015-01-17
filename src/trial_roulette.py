@@ -272,6 +272,6 @@ def distr_chips_hdf5(file, chips):
 
     del rest
 
-    hdf5_save(floored, "/home/ext/singer/scratch/semmarkov/data/wiki_sem_prior_chips_4.h5")
+    hdf5_save(floored, "file.h5")
 
     return
