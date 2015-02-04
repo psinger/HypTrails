@@ -63,7 +63,9 @@ markov.prepare_data(trails)
 markov.fit(trails)
 
 evi1 = markov.bayesian_evidence()
-print evi1
+markov.bayesian_evidence_old()
+sys.exit()
+#print evi1
 
 #let us check another hypothesis
 #self-loop hypothesis
@@ -78,6 +80,8 @@ markov.prepare_data(trails)
 markov.fit(trails)
 
 evi2 = markov.bayesian_evidence()
+markov.bayesian_evidence_old()
+sys.exit()
 print evi2
 
 #Bayes factor
