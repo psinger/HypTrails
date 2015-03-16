@@ -14,11 +14,14 @@ def distr_chips(matrix, chips):
     expressed hypothesis matrix.
     Note that only the informative part is done here.
     :param matrix: csr_matrix A_k expressing theory H_k
-    :param chips: number of chips C to distribute
+    :param chips: number of overall (whole matrix) chips C to distribute
     :return: Dirichlet pseudo clicks in the shape of a matrix
     '''
 
     print "chips", chips
+
+    if float(chips).is_integer() == False:
+        raise Exception, "Only use C = |S|^2 * k"
 
     #it may make sense to do this in the outer scripts for memory reasons
     matrix = (matrix / matrix.sum()) * chips
@@ -81,7 +84,7 @@ def distr_chips_row(matrix, chips):
     each row is the same.
     Note that only the informative part is done here.
     :param matrix: csr_matrix A_k expressing theory H_k
-    :param chips: number of chips C to distribute
+    :param chips: number of overall (whole matrix) chips C to distribute
     :return: Dirichlet pseudo clicks in the shape of a matrix
     '''
 
@@ -186,7 +189,7 @@ def hdf5_save(matrix, filename, dtype=np.dtype(np.float64)):
 
     return
 
-def distr_chips_hdf5(file, chips):
+def distr_chips_hdf5(file, chips, matrix_sum_final):
     '''
     HDF5 (PyTables) version of the
     trial roulette method for eliciting Dirichlet priors from
@@ -194,6 +197,7 @@ def distr_chips_hdf5(file, chips):
     Note that only the informative part is done here.
     :param file: hdf5 filename where hypothesis matrix A is stored
     :param chips: number of chips C to distribute
+    :param matrix_sum_final: the final sum of the input matrix, needs to be pre-calculated
     :return: True
     '''
 
@@ -210,10 +214,6 @@ def distr_chips_hdf5(file, chips):
     floored = scipy.sparse.lil_matrix((l, l), dtype=np.uint16)
     rest = scipy.sparse.lil_matrix((l, l), dtype=np.float32)
     print floored.dtype
-
-    #please pre-calculate that and insert the value here
-    #hackish, but faster than doing the calc
-    matrix_sum_final = 1337
 
     matrix_sum = 0.
     nnz_sum = 0.

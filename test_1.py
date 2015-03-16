@@ -2,7 +2,7 @@ from __future__ import division
 
 __author__ = 'psinger'
 
-#get it from https://github.com/psinger/PathTools
+#https://github.com/psinger/PathTools
 import PathTools as pt
 
 from src.trial_roulette import *
@@ -15,7 +15,7 @@ Simple test case to illustrate the HypTrails approach
 
 #get the trails
 trails = []
-with open("data/test_case_1") as f:
+with open("PathTools/data/test_case_4") as f:
     for line in f:
         if line.strip() == "":
             continue
