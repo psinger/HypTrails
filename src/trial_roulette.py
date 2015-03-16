@@ -20,6 +20,8 @@ def distr_chips(matrix, chips):
 
     print "chips", chips
 
+    chips = chips
+
     if float(chips).is_integer() == False:
         raise Exception, "Only use C = |S|^2 * k"
 
@@ -47,6 +49,7 @@ def distr_chips(matrix, chips):
 
     matrix = matrix - floored
     print matrix.data.shape, floored.data.shape
+
 
     idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
 
@@ -88,21 +91,25 @@ def distr_chips_row(matrix, chips):
     :return: Dirichlet pseudo clicks in the shape of a matrix
     '''
 
+
+
+    length = matrix.shape[1]
+
+    chips = chips / length
+
     print "chips", chips
 
-    len = matrix.shape()[1]
-
-    chips = chips / len
-
-    if chips.is_integer() == False:
+    if float(chips).is_integer() == False:
         raise Exception, "Only use C = |S|^2 * k"
 
     sum = matrix.sum()
-    sum *= len
+    #sum *= len
 
 
     #it may make sense to do this in the outer scripts for memory reasons
     matrix = (matrix / sum) * chips
+
+    print matrix
 
     print "matrix nnz", matrix.nnz
     print matrix.max()
@@ -126,12 +133,19 @@ def distr_chips_row(matrix, chips):
     matrix = matrix - floored
     print matrix.data.shape, floored.data.shape
 
+    print matrix
+
     idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
 
     i, j = matrix.nonzero()
 
+    print i, j, idx
+    #sys.exit()
+
     i_idx = i[idx]
     j_idx = j[idx]
+
+    #print type(i_idx), j_idx, len(j_idx)
 
     if len(i_idx) > 0:
         floored[i_idx, j_idx] += 1
