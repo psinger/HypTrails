@@ -77,6 +77,8 @@ def distr_chips(matrix, chips):
 
     print floored.nnz
 
+    #print floored
+
     return floored
 
 def distr_chips_row(matrix, chips):
@@ -109,8 +111,6 @@ def distr_chips_row(matrix, chips):
     #it may make sense to do this in the outer scripts for memory reasons
     matrix = (matrix / sum) * chips
 
-    print matrix
-
     print "matrix nnz", matrix.nnz
     print matrix.max()
 
@@ -133,14 +133,9 @@ def distr_chips_row(matrix, chips):
     matrix = matrix - floored
     print matrix.data.shape, floored.data.shape
 
-    print matrix
-
     idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
 
     i, j = matrix.nonzero()
-
-    print i, j, idx
-    #sys.exit()
 
     i_idx = i[idx]
     j_idx = j[idx]
@@ -164,7 +159,9 @@ def distr_chips_row(matrix, chips):
 
     print "prior calc done"
 
-    print floored.nnz
+    #print floored.nnz
+
+    #print floored
 
     return floored
 

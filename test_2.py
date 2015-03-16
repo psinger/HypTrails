@@ -51,7 +51,6 @@ chips = 25
 
 
 prior = distr_chips_row(A, chips)
-print prior
 
 #prior=1. refers to the uniform part
 markov = pt.MarkovChain(use_prior=True, reset = True, prior=1., specific_prior=prior,
