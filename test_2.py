@@ -47,10 +47,9 @@ A = A.tocsr()
 
 #number of chips C
 #only informative part
-chips = 25
-
-
-prior = distr_chips_row(A, chips)
+chips = 5
+#prior = distr_chips_row(A, chips)
+prior = A
 
 #prior=1. refers to the uniform part
 markov = pt.MarkovChain(use_prior=True, reset = True, prior=1., specific_prior=prior,
@@ -58,7 +57,8 @@ markov = pt.MarkovChain(use_prior=True, reset = True, prior=1., specific_prior=p
 markov.prepare_data(trails)
 markov.fit(trails)
 
-evi1 = markov.bayesian_evidence()
+#testing the live distribution
+evi1 = markov.bayesian_evidence(live_distribution=True, chip_amount=5)
 print evi1
 
 #let us check another hypothesis
@@ -66,6 +66,7 @@ print evi1
 A = lil_matrix((5,5))
 A.setdiag(1.)
 
+chips = 25
 A = A.tocsr()
 prior = distr_chips(A, chips)
 

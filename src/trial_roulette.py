@@ -85,31 +85,27 @@ def distr_chips_row(matrix, chips):
     '''
     Trial roulette method for eliciting Dirichlet priors from
     expressed hypothesis matrix.
-    This method works for single row matrices with the condition that
-    each row is the same.
+    This method works for single row matrices.
     Note that only the informative part is done here.
     :param matrix: csr_matrix A_k expressing theory H_k
-    :param chips: number of overall (whole matrix) chips C to distribute
+    :param chips: number of chips C to distribute per row!
     :return: Dirichlet pseudo clicks in the shape of a matrix
     '''
 
 
 
-    length = matrix.shape[1]
+    #length = matrix.shape[1]
 
-    chips = chips / length
+    chips = chips #/ length
 
     print "chips", chips
 
     if float(chips).is_integer() == False:
         raise Exception, "Only use C = |S|^2 * k"
 
-    sum = matrix.sum()
-    #sum *= len
-
 
     #it may make sense to do this in the outer scripts for memory reasons
-    matrix = (matrix / sum) * chips
+    matrix = (matrix / matrix.sum()) * chips
 
     print "matrix nnz", matrix.nnz
     print matrix.max()
