@@ -91,9 +91,6 @@ def distr_chips_row(matrix, chips):
     :param chips: number of chips C to distribute per row!
     :return: Dirichlet pseudo clicks in the shape of a matrix
     '''
-
-
-
     #length = matrix.shape[1]
 
     chips = chips #/ length
@@ -198,10 +195,10 @@ def hdf5_save(matrix, filename, dtype=np.dtype(np.float64)):
 
 def distr_chips_hdf5(file, chips, matrix_sum_final):
     '''
-    HDF5 (PyTables) version of the
-    trial roulette method for eliciting Dirichlet priors from
+    HDF5 (PyTables) version of the trial roulette method for eliciting Dirichlet priors from
     expressed hypothesis matrix.
     Note that only the informative part is done here.
+    This works for densely stored hdf5 matrices (i.e., single data matrix).
     :param file: hdf5 filename where hypothesis matrix A is stored
     :param chips: number of chips C to distribute
     :param matrix_sum_final: the final sum of the input matrix, needs to be pre-calculated
@@ -212,14 +209,19 @@ def distr_chips_hdf5(file, chips, matrix_sum_final):
 
     matrix = h5.root.data
 
+    print matrix[:]
+
     l = matrix.shape[0]
+    k = matrix.shape[1]
+
+    print matrix[0]
 
     bl = 1000
     t0= time.time()
 
     #dtype may need to be altered
-    floored = scipy.sparse.lil_matrix((l, l), dtype=np.uint16)
-    rest = scipy.sparse.lil_matrix((l, l), dtype=np.float32)
+    floored = scipy.sparse.lil_matrix((l, k), dtype=np.uint16)
+    rest = scipy.sparse.lil_matrix((l, k), dtype=np.float32)
     print floored.dtype
 
     matrix_sum = 0.
@@ -280,5 +282,119 @@ def distr_chips_hdf5(file, chips, matrix_sum_final):
     del rest
 
     hdf5_save(floored, "file.h5")
+
+    return
+
+def distr_chips_hdf5_sparse(file, chips, matrix_sum_final, filename):
+    '''
+    HDF5 (PyTables) version of the trial roulette method for eliciting Dirichlet priors from
+    expressed hypothesis matrix.
+    This version creates a new hdf5 file including the chip distribution.
+    Note that only the informative part is done here.
+    This works both for sparsely stored hdf5 matrices.
+    :param file: hdf5 filename where hypothesis matrix A is stored (needs data, indices, indptr fields)
+    :param shape: the shape of the matrix
+    :param chips: number of chips C to distribute
+    :param matrix_sum_final: the final sum of the input matrix, needs to be pre-calculated
+    :param filename: filename of new file
+    :return: True
+    '''
+
+    h5 = tb.open_file(file, "r")
+
+    data = h5.root.data
+    indices = h5.root.indices
+    indptr = h5.root.indptr
+
+    l = data.shape[0]
+
+    bl = 1000
+    t0= time.time()
+
+    atom = tb.Atom.from_dtype(data.dtype)
+
+    f = tb.open_file(filename, 'w')
+
+    filters = tb.Filters(complevel=5, complib='blosc')
+    data_out = f.create_carray(f.root, 'data', atom, shape=data.shape, filters=filters)
+
+    print data.shape
+    rest = np.empty(data.shape, dtype=np.float32)
+
+    #print rest.shape
+    #sys.exit()
+
+    print "saving indices"
+    indices_out = f.create_carray(f.root, 'indices', tb.Int32Atom(), shape=indices.shape, filters=filters)
+    indices_out[:] = indices[:]
+
+    print "saving indptr"
+    indptr_out = f.create_carray(f.root, 'indptr', tb.Int32Atom(), shape=indptr.shape, filters=filters)
+    indptr_out[:] = indptr[:]
+
+    matrix_sum = 0.
+    nnz_sum = 0.
+    flushme = 0
+    floored_sum = 0
+    for i in range(0, l, bl):
+        print i
+        rows = data[i:min(i+bl, l)].astype(np.float64) / matrix_sum_final
+        matrix_sum += rows.sum()
+        rows = rows * chips
+        floor_tmp = np.floor(rows)
+        data_out[i:min(i+bl, l)] = floor_tmp
+        floored_sum += floor_tmp.sum()
+        rest_tmp = rows - floor_tmp
+        #print rest_tmp
+        #print rest[i:min(i+bl, l)]
+        rest[i:min(i+bl, l)] = rest_tmp
+        #print "nnz floored", floored.nnz
+        #print "nnz rest", rest.nnz
+
+        flushme += 1
+        #if flushme % 1 == 0:
+        #    break
+        #     print "flushing now"
+        #     print (time.time()-t0) / 60.
+        #     h5.flush()
+        #     print "flushing done"
+
+        print (time.time()-t0) / 60.
+
+    print "looping done"
+
+    #floored = floored.tocsr()
+    #rest = rest.tocsr()
+
+    print "matrix sum", matrix_sum
+
+    #floored_sum = data_out.sum()
+    print "floored sum", floored_sum
+
+    rest_sum = int(chips - floored_sum)
+
+
+    print "rest sum", rest_sum
+
+    idx = rest.argpartition(-rest_sum)[-rest_sum:]
+
+    print "indexing rest done"
+
+    data_out[idx] += 1
+
+    print "incrementing index done"
+
+    #floored_sum = data_out.sum()
+    print "final floored sum", floored_sum
+
+    #print rest.data.shape, data_out.data.shape
+
+    assert(rest.shape == data_out.shape)
+
+    del rest
+
+    f.close()
+
+    #hdf5_save(floored, "file.h5")
 
     return
