@@ -7,6 +7,7 @@ import time
 import scipy
 import numpy as np
 import sys
+import random
 
 def distr_chips(matrix, chips):
     '''
@@ -18,39 +19,60 @@ def distr_chips(matrix, chips):
     :return: Dirichlet pseudo clicks in the shape of a matrix
     '''
 
-    print "chips", chips
+    #print "chips", chips
 
-    chips = chips
+    chips = float(chips)
 
     if float(chips).is_integer() == False:
         raise Exception, "Only use C = |S|^2 * k"
 
+    n = matrix.shape[1]
+
+    nnz = matrix.nnz
+
+    #if the matrix has 100% sparsity, we equally distribute the chips
+    if nnz == 0:
+        x = chips / n
+        matrix[:] = int(x)
+        rest = chips - (int(x) * n)
+        if rest != 0.:
+            eles = matrix.data.shape[0]
+            idx = random.sample(range(eles),int(rest))
+            # i_idx = [] #random.sample(range(matrix.shape[0]),int(rest))
+            # j_idx = [] #random.sample(range(matrix.shape[1]),int(rest))
+            # for l in xrange(int(rest)):
+            #     i_idx.append(random.choice(range(matrix.shape[0])))
+            #     j_idx.append(random.choice(range(matrix.shape[1])))
+            # print len(i_idx)
+            matrix.data[idx] += 1
+        return matrix
+
     #it may make sense to do this in the outer scripts for memory reasons
     matrix = (matrix / matrix.sum()) * chips
 
-    print "matrix nnz", matrix.nnz
-    print matrix.max()
+    #print "matrix nnz", matrix.nnz
+    #print matrix.max()
 
 
-    print "normalization done"
-    print "matrix nnz", matrix.nnz
-    print matrix.max()
+    #print "normalization done"
+    #print "matrix nnz", matrix.nnz
+    #print matrix.max()
 
     floored = matrix.floor()
 
-    print "flooring done"
+    #print "flooring done"
 
-    print "floored sum", floored.sum()
+    #print "floored sum", floored.sum()
 
 
     rest_sum = int(chips - floored.sum())
 
-    print "rest sum", rest_sum
+    #print "rest sum", rest_sum
 
     matrix = matrix - floored
-    print matrix.data.shape, floored.data.shape
+    #print matrix.data.shape, floored.data.shape
 
-
+    #better random variation needed
     idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
 
     i, j = matrix.nonzero()
@@ -61,102 +83,26 @@ def distr_chips(matrix, chips):
     if len(i_idx) > 0:
         floored[i_idx, j_idx] += 1
 
-    print "final sum", floored.sum()
+    #print "final sum", floored.sum()
 
-    print matrix.data.shape, floored.data.shape
-
-    #assert(matrix.data.shape == floored.data.shape)
-
-    floored.eliminate_zeros()
-
-    print type(floored)
-
-    del matrix
-
-    print "prior calc done"
-
-    print floored.nnz
-
-    #print floored
-
-    return floored
-
-def distr_chips_row(matrix, chips):
-    '''
-    Trial roulette method for eliciting Dirichlet priors from
-    expressed hypothesis matrix.
-    This method works for single row matrices.
-    Note that only the informative part is done here.
-    :param matrix: csr_matrix A_k expressing theory H_k
-    :param chips: number of chips C to distribute per row!
-    :return: Dirichlet pseudo clicks in the shape of a matrix
-    '''
-    #length = matrix.shape[1]
-
-    chips = chips #/ length
-
-    print "chips", chips
-
-    if float(chips).is_integer() == False:
-        raise Exception, "Only use C = |S|^2 * k"
-
-
-    #it may make sense to do this in the outer scripts for memory reasons
-    matrix = (matrix / matrix.sum()) * chips
-
-    print "matrix nnz", matrix.nnz
-    print matrix.max()
-
-
-    print "normalization done"
-    print "matrix nnz", matrix.nnz
-    print matrix.max()
-
-    floored = matrix.floor()
-
-    print "flooring done"
-
-    print "floored sum", floored.sum()
-
-
-    rest_sum = int(chips - floored.sum())
-
-    print "rest sum", rest_sum
-
-    matrix = matrix - floored
-    print matrix.data.shape, floored.data.shape
-
-    idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
-
-    i, j = matrix.nonzero()
-
-    i_idx = i[idx]
-    j_idx = j[idx]
-
-    #print type(i_idx), j_idx, len(j_idx)
-
-    if len(i_idx) > 0:
-        floored[i_idx, j_idx] += 1
-
-    print "final sum", floored.sum()
-
-    print matrix.data.shape, floored.data.shape
+    #print matrix.data.shape, floored.data.shape
 
     #assert(matrix.data.shape == floored.data.shape)
 
     floored.eliminate_zeros()
 
-    print type(floored)
+    #print type(floored)
 
     del matrix
 
-    print "prior calc done"
+    #print "prior calc done"
 
     #print floored.nnz
 
-    #print floored
+    ##print floored
 
     return floored
+
 
 def hdf5_save(matrix, filename, dtype=np.dtype(np.float64)):
     '''
@@ -168,32 +114,32 @@ def hdf5_save(matrix, filename, dtype=np.dtype(np.float64)):
     :return: True
     '''
 
-    print matrix.shape
+    #print matrix.shape
 
     atom = tb.Atom.from_dtype(dtype)
 
     f = tb.open_file(filename, 'w')
 
-    print "saving data"
+    #print "saving data"
     filters = tb.Filters(complevel=5, complib='blosc')
     out = f.create_carray(f.root, 'data', atom, shape=matrix.data.shape, filters=filters)
     out[:] = matrix.data
 
-    print "saving indices"
+    #print "saving indices"
     out = f.create_carray(f.root, 'indices', tb.Int32Atom(), shape=matrix.indices.shape, filters=filters)
     out[:] = matrix.indices
 
-    print "saving indptr"
+    #print "saving indptr"
     out = f.create_carray(f.root, 'indptr', tb.Int32Atom(), shape=matrix.indptr.shape, filters=filters)
     out[:] = matrix.indptr
 
-    print "saving done"
+    #print "saving done"
 
     f.close()
 
     return
 
-def distr_chips_hdf5(file, chips, matrix_sum_final):
+def distr_chips_hdf5(file, chips, matrix_sum_final, out_name):
     '''
     HDF5 (PyTables) version of the trial roulette method for eliciting Dirichlet priors from
     expressed hypothesis matrix.
@@ -202,6 +148,7 @@ def distr_chips_hdf5(file, chips, matrix_sum_final):
     :param file: hdf5 filename where hypothesis matrix A is stored
     :param chips: number of chips C to distribute
     :param matrix_sum_final: the final sum of the input matrix, needs to be pre-calculated
+    :param out_name: filename of new file
     :return: True
     '''
 
@@ -209,12 +156,12 @@ def distr_chips_hdf5(file, chips, matrix_sum_final):
 
     matrix = h5.root.data
 
-    print matrix[:]
+    #print matrix[:]
 
     l = matrix.shape[0]
     k = matrix.shape[1]
 
-    print matrix[0]
+    #print matrix[0]
 
     bl = 1000
     t0= time.time()
@@ -222,13 +169,13 @@ def distr_chips_hdf5(file, chips, matrix_sum_final):
     #dtype may need to be altered
     floored = scipy.sparse.lil_matrix((l, k), dtype=np.uint16)
     rest = scipy.sparse.lil_matrix((l, k), dtype=np.float32)
-    print floored.dtype
+    #print floored.dtype
 
     matrix_sum = 0.
     nnz_sum = 0.
     flushme = 0
     for i in range(0, l, bl):
-        print i
+        #print i
         rows = matrix[i:min(i+bl, l),:].astype(np.float64) / matrix_sum_final
         matrix_sum += rows.sum()
         rows = rows * chips
@@ -236,56 +183,55 @@ def distr_chips_hdf5(file, chips, matrix_sum_final):
         floored[i:min(i+bl, l),:] = floor_tmp
         rest_tmp = rows - floor_tmp
         rest[i:min(i+bl, l),:] = rest_tmp
-        print "nnz floored", floored.nnz
-        print "nnz rest", rest.nnz
+        #print "nnz floored", floored.nnz
+        #print "nnz rest", rest.nnz
 
         flushme += 1
         #if flushme % 1 == 0:
         #    break
-        #     print "flushing now"
-        #     print (time.time()-t0) / 60.
+        #     #print "flushing now"
+        #     #print (time.time()-t0) / 60.
         #     h5.flush()
-        #     print "flushing done"
+        #     #print "flushing done"
 
-        print (time.time()-t0) / 60.
+        #print (time.time()-t0) / 60.
 
-    print "looping done"
+    #print "looping done"
 
     floored = floored.tocsr()
     rest = rest.tocsr()
 
-    print "matrix sum", matrix_sum
+    #print "matrix sum", matrix_sum
 
     floored_sum = floored.sum()
-    print "floored sum", floored_sum
+    #print "floored sum", floored_sum
 
     rest_sum = int(chips - floored_sum)
 
 
-    print "rest sum", rest_sum
+    #print "rest sum", rest_sum
 
     idx = rest.data.argpartition(-rest_sum)[-rest_sum:]
 
-    print "indexing rest done"
+    #print "indexing rest done"
 
-    floored.data[idx] += 1
+    i, j = rest.nonzero()
 
-    print "incrementing index done"
+    i_idx = i[idx]
+    j_idx = j[idx]
 
-    floored_sum = floored.sum()
-    print "final floored sum", floored_sum
-
-    print rest.data.shape, floored.data.shape
-
-    assert(rest.data.shape == floored.data.shape)
+    if len(i_idx) > 0:
+        floored[i_idx, j_idx] += 1
 
     del rest
 
-    hdf5_save(floored, "file.h5")
+    hdf5_save(floored, out_name)
+
+    h5.close()
 
     return
 
-def distr_chips_hdf5_sparse(file, chips, matrix_sum_final, filename):
+def distr_chips_hdf5_sparse(file, chips, matrix_sum_final, out_name):
     '''
     HDF5 (PyTables) version of the trial roulette method for eliciting Dirichlet priors from
     expressed hypothesis matrix.
@@ -296,7 +242,7 @@ def distr_chips_hdf5_sparse(file, chips, matrix_sum_final, filename):
     :param shape: the shape of the matrix
     :param chips: number of chips C to distribute
     :param matrix_sum_final: the final sum of the input matrix, needs to be pre-calculated
-    :param filename: filename of new file
+    :param out_name: filename of new file
     :return: True
     '''
 
@@ -313,22 +259,22 @@ def distr_chips_hdf5_sparse(file, chips, matrix_sum_final, filename):
 
     atom = tb.Atom.from_dtype(data.dtype)
 
-    f = tb.open_file(filename, 'w')
+    f = tb.open_file(out_name, 'w')
 
     filters = tb.Filters(complevel=5, complib='blosc')
     data_out = f.create_carray(f.root, 'data', atom, shape=data.shape, filters=filters)
 
-    print data.shape
+    #print data.shape
     rest = np.empty(data.shape, dtype=np.float32)
 
-    #print rest.shape
+    ##print rest.shape
     #sys.exit()
 
-    print "saving indices"
+    #print "saving indices"
     indices_out = f.create_carray(f.root, 'indices', tb.Int32Atom(), shape=indices.shape, filters=filters)
     indices_out[:] = indices[:]
 
-    print "saving indptr"
+    #print "saving indptr"
     indptr_out = f.create_carray(f.root, 'indptr', tb.Int32Atom(), shape=indptr.shape, filters=filters)
     indptr_out[:] = indptr[:]
 
@@ -337,7 +283,7 @@ def distr_chips_hdf5_sparse(file, chips, matrix_sum_final, filename):
     flushme = 0
     floored_sum = 0
     for i in range(0, l, bl):
-        print i
+        #print i
         rows = data[i:min(i+bl, l)].astype(np.float64) / matrix_sum_final
         matrix_sum += rows.sum()
         rows = rows * chips
@@ -345,54 +291,55 @@ def distr_chips_hdf5_sparse(file, chips, matrix_sum_final, filename):
         data_out[i:min(i+bl, l)] = floor_tmp
         floored_sum += floor_tmp.sum()
         rest_tmp = rows - floor_tmp
-        #print rest_tmp
-        #print rest[i:min(i+bl, l)]
+        ##print rest_tmp
+        ##print rest[i:min(i+bl, l)]
         rest[i:min(i+bl, l)] = rest_tmp
-        #print "nnz floored", floored.nnz
-        #print "nnz rest", rest.nnz
+        ##print "nnz floored", floored.nnz
+        ##print "nnz rest", rest.nnz
 
         flushme += 1
         #if flushme % 1 == 0:
         #    break
-        #     print "flushing now"
-        #     print (time.time()-t0) / 60.
+        #     #print "flushing now"
+        #     #print (time.time()-t0) / 60.
         #     h5.flush()
-        #     print "flushing done"
+        #     #print "flushing done"
 
-        print (time.time()-t0) / 60.
+        #print (time.time()-t0) / 60.
 
-    print "looping done"
+    #print "looping done"
 
     #floored = floored.tocsr()
     #rest = rest.tocsr()
 
-    print "matrix sum", matrix_sum
+    #print "matrix sum", matrix_sum
 
     #floored_sum = data_out.sum()
-    print "floored sum", floored_sum
+    #print "floored sum", floored_sum
 
     rest_sum = int(chips - floored_sum)
 
 
-    print "rest sum", rest_sum
+    #print "rest sum", rest_sum
 
     idx = rest.argpartition(-rest_sum)[-rest_sum:]
 
-    print "indexing rest done"
+    #print "indexing rest done"
 
     data_out[idx] += 1
 
-    print "incrementing index done"
+    #print "incrementing index done"
 
     #floored_sum = data_out.sum()
-    print "final floored sum", floored_sum
+    #print "final floored sum", floored_sum
 
-    #print rest.data.shape, data_out.data.shape
+    ##print rest.data.shape, data_out.data.shape
 
     assert(rest.shape == data_out.shape)
 
     del rest
 
+    h5.close()
     f.close()
 
     #hdf5_save(floored, "file.h5")
