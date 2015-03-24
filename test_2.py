@@ -8,6 +8,7 @@ import PathTools as pt
 from src.trial_roulette import *
 import numpy as np
 from scipy.sparse import csr_matrix, lil_matrix
+import os
 
 '''
 Another simple test case to illustrate the HypTrails approach
@@ -15,7 +16,7 @@ Another simple test case to illustrate the HypTrails approach
 
 #get the trails
 trails = []
-with open("PathTools/data/test_case_4") as f:
+with open(os.path.join(os.path.dirname(__file__),"PathTools/data/test_case_4")) as f:
     for line in f:
         if line.strip() == "":
             continue
