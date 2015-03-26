@@ -72,7 +72,10 @@ def distr_chips(matrix, chips):
     matrix = matrix - floored
     #print matrix.data.shape, floored.data.shape
 
-    #better random variation needed
+    #as we can assume that the indices and states are already
+    #in random order, we can also assume that ties are handled
+    #randomly here.
+    #Better randomization might be appropriate though
     idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
 
     i, j = matrix.nonzero()
