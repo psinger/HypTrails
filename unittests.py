@@ -4,18 +4,20 @@ __author__ = 'psinger'
 
 import random
 import unittest
-from scipy.sparse import rand, lil_matrix, csr_matrix
+from scipy.sparse import rand, lil_matrix, csr_matrix, vstack
 from sklearn.preprocessing import normalize
 from src.trial_roulette import *
 import PathTools as pt
 import os
 import logging
+from joblib import Parallel, delayed
 
-class TestRouletteFunctions(unittest.TestCase):
+class TestFunctions(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.states = 100
-        self.matrix = rand(self.states,self.states, format='csr')
+        self.matrix = rand(self.states,self.states, density=0.2, format='csr')
 
     def test_distr_chips(self):
         ret = distr_chips(self.matrix, self.states*self.states)
@@ -28,6 +30,19 @@ class TestRouletteFunctions(unittest.TestCase):
             tmp[i,:] = distr_chips(self.matrix[i,:], self.states)
 
         self.assertEqual(tmp.sum(), self.states*self.states)
+
+
+    def test_distr_chips_row_vs_full(self):
+        tmp = normalize(self.matrix, norm='l1')
+
+        ret1 = distr_chips(tmp, self.states*self.states, matrix_sum_final = self.states)
+
+        ret2 = lil_matrix(self.matrix.shape)
+
+        for i in xrange(self.states):
+            ret2[i,:] = distr_chips(tmp[i,:], self.states)
+
+        np.testing.assert_array_almost_equal(ret1.toarray(), ret2.toarray(), decimal=0)
 
     def test_distr_chips_zeros(self):
         m = self.matrix
@@ -42,6 +57,30 @@ class TestRouletteFunctions(unittest.TestCase):
             tmp[i,:] = distr_chips(self.matrix[i,:], self.states+53)
 
         self.assertEqual(tmp.sum(), (self.states)*(self.states)+ self.states*53)
+
+    def test_distr_chips_norm(self):
+        ret1 = distr_chips(self.matrix, self.states*self.states)
+        tmp = self.matrix / self.matrix.sum()
+        ret2 = distr_chips(tmp, self.states*self.states, norm=False)
+
+        np.testing.assert_array_equal(ret1.toarray(), ret2.toarray())
+
+    def test_distr_chips_row_norm(self):
+        ret1 = distr_chips(self.matrix[0,:], self.states)
+        tmp = normalize(self.matrix, norm='l1')
+        ret2 = distr_chips(tmp[0,:], self.states, norm=False)
+
+        np.testing.assert_array_equal(ret1.toarray(), ret2.toarray())
+
+    def test_distr_chips_row_parallel(self):
+
+        tmp = normalize(self.matrix, norm='l1')
+
+        ret1 = distr_chips_row(tmp, self.states, norm=False)
+
+        ret2 = distr_chips(tmp, self.states*self.states)
+
+        np.testing.assert_array_almost_equal(ret1.toarray(), ret2.toarray(), decimal=0)
 
     def test_distr_chips_hdf5(self):
         filters = tb.Filters(complevel=5, complib='blosc')
