@@ -95,33 +95,27 @@ def distr_chips(matrix, chips, matrix_sum_final = None, norm=True):
 
     floored = matrix.floor()
 
-
-
     rest_sum = int(chips - floored.sum())
 
-    #print "rest sum", rest_sum
+    if rest_sum > 0:
 
-    matrix = matrix - floored
-    #print matrix.data.shape, floored.data.shape
+        #print "rest sum", rest_sum
 
-    #as we can assume that the indices and states are already
-    #in random order, we can also assume that ties are handled randomly here.
-    #Better randomization might be appropriate though
-    idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
+        matrix = matrix - floored
+        #print matrix.data.shape, floored.data.shape
 
-    i, j = matrix.nonzero()
+        #as we can assume that the indices and states are already
+        #in random order, we can also assume that ties are handled randomly here.
+        #Better randomization might be appropriate though
+        idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
 
-    i_idx = i[idx]
-    j_idx = j[idx]
+        i, j = matrix.nonzero()
 
-    if len(i_idx) > 0:
-        floored[i_idx, j_idx] += 1
+        i_idx = i[idx]
+        j_idx = j[idx]
 
-    #print "final sum", floored.sum()
-
-    #print matrix.data.shape, floored.data.shape
-
-    #assert(matrix.data.shape == floored.data.shape)
+        if len(i_idx) > 0:
+            floored[i_idx, j_idx] += 1
 
     floored.eliminate_zeros()
 
@@ -226,20 +220,21 @@ def distr_chips_hdf5(file, chips, matrix_sum_final, out_name, norm=True):
 
     rest_sum = int(chips - floored_sum)
 
+    if rest_sum > 0.:
 
-    #print "rest sum", rest_sum
+        #print "rest sum", rest_sum
 
-    idx = rest.data.argpartition(-rest_sum)[-rest_sum:]
+        idx = rest.data.argpartition(-rest_sum)[-rest_sum:]
 
-    #print "indexing rest done"
+        #print "indexing rest done"
 
-    i, j = rest.nonzero()
+        i, j = rest.nonzero()
 
-    i_idx = i[idx]
-    j_idx = j[idx]
+        i_idx = i[idx]
+        j_idx = j[idx]
 
-    if len(i_idx) > 0:
-        floored[i_idx, j_idx] += 1
+        if len(i_idx) > 0:
+            floored[i_idx, j_idx] += 1
 
     del rest
 
@@ -341,23 +336,24 @@ def distr_chips_hdf5_sparse(file, chips, matrix_sum_final, out_name, norm=True):
 
     rest_sum = int(chips - floored_sum)
 
+    if rest_sum > 0.:
 
     #print "rest sum", rest_sum
 
-    idx = rest.argpartition(-rest_sum)[-rest_sum:]
+        idx = rest.argpartition(-rest_sum)[-rest_sum:]
 
-    #print "indexing rest done"
+        #print "indexing rest done"
 
-    data_out[idx] += 1
+        data_out[idx] += 1
 
-    #print "incrementing index done"
+        #print "incrementing index done"
 
-    #floored_sum = data_out.sum()
-    #print "final floored sum", floored_sum
+        #floored_sum = data_out.sum()
+        #print "final floored sum", floored_sum
 
-    ##print rest.data.shape, data_out.data.shape
+        ##print rest.data.shape, data_out.data.shape
 
-    assert(rest.shape == data_out.shape)
+        assert(rest.shape == data_out.shape)
 
     del rest
 
