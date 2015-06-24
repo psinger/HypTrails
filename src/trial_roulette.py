@@ -137,18 +137,19 @@ def distr_chips(matrix, chips, matrix_sum_final = None, norm=True):
 
     return floored
 
-def distr_chips_row(matrix, chips, norm=True):
+def distr_chips_row(matrix, chips, n_jobs=-1, norm=True):
     '''
     Trial roulette method for eliciting Dirichlet priors from
     expressed hypothesis matrix.
     This function works row-based. Thus, each row will receive the given number of chips!!!
     :param matrix: csr_matrix A_k expressing theory H_k
     :param chips: number of (single row) chips C to distribute
+    :param n_jobs: number of jobs, default -1
     :param norm: set False if matrix does not need to be normalized
     :return: Dirichlet pseudo clicks in the shape of a matrix
     '''
 
-    r = Parallel(n_jobs=-1)(delayed(distr_chips)(matrix[i,:],chips,norm=norm) for i in xrange(matrix.shape[0]))
+    r = Parallel(n_jobs=n_jobs)(delayed(distr_chips)(matrix[i,:],chips,norm=norm) for i in xrange(matrix.shape[0]))
 
     return scipy.sparse.vstack(r)
 
