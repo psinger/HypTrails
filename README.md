@@ -9,4 +9,4 @@ Both packages can be installed by calling ```python setup.py install```.
 
 Please check the ```unittests.py``` file for examples.
 
-A more thorough tutorial will be provided soon.
+A thorough tutorial is provided in the folder ```tutorial``` in the form of an iPython notebook. You can run it yourself or take a look at the rendered output at: http://nbviewer.ipython.org/github/psinger/HypTrails/blob/master/tutorial/hyptrails_tutorial.ipynb 
