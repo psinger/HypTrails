@@ -9,6 +9,162 @@ import numpy as np
 import sys
 import random
 from joblib import Parallel, delayed
+from scipy.sparse.sparsetools import csr_scale_rows
+
+####CSR_MATRIX methods#####
+
+def distr_chips(matrix, chips, matrix_sum_final = None, norm=True, mode="integers"):
+    '''
+    Trial roulette method for eliciting Dirichlet priors from expressed hypothesis matrix.
+    Note that only the informative part is done here.
+    Note that this method operates on the whole matrix and thus, distributes the number of chips to the whole matrix
+    Use "distr_chips_row" for row-based distribution
+    :param matrix: csr_matrix A_k expressing theory H_k
+    :param chips: number of overall (whole matrix) chips C to distribute
+    :param matrix_sum_final: the final sum of the input matrix, can be provided if matrix.sum() does not suffice
+    :param norm: set False if matrix does not need to be normalized (whole matrix)
+    :param mode: sets the mode of the distribution; "integers" means that the distributed pseudo clicks are integers;
+                 "reals" means that the pseudo clicks (hyperparameters) can also be positive reals
+    :return: Dirichlet hyperparameters in the shape of a matrix
+    '''
+
+    if mode not in ['integers', 'reals']:
+        raise Exception, "Mode needs to be 'integers' or 'reals'!"
+
+    chips = float(chips)
+
+    if float(chips).is_integer() == False and mode == "integers":
+        raise Exception, "If mode is 'integers' then only use integer chip counts!"
+
+    n = matrix.shape[1]
+    if chips < n:
+        raise Exception, "The current implementation requires at least as many chips as there are states!"
+
+    if mode == "integers":
+        nnz = matrix.nnz
+        n,m = matrix.shape
+        # if the matrix has 100% sparsity, we equally distribute the chips
+        if nnz == 0:
+            x = chips / n / m
+            matrix[:] = int(x)
+            rest = chips - (int(x) * n * m)
+            if rest != 0.:
+                eles = matrix.data.shape[0]
+                idx = random.sample(range(eles),int(rest))
+                matrix.data[idx] += 1
+            return matrix
+
+        if norm:
+            if matrix_sum_final is None:
+                matrix_sum_final = matrix.sum()
+            # it may make sense to do this in the outer scripts for memory reasons
+            matrix = (matrix / matrix_sum_final) * chips
+        else:
+            matrix = matrix * chips
+
+        floored = matrix.floor()
+
+        rest_sum = int(chips - floored.sum())
+
+        if rest_sum > 0:
+            matrix = matrix - floored
+
+            # as we can assume that the indices and states are already
+            # in random order, we can also assume that ties are handled randomly here.
+            # Better randomization might be appropriate though
+            idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
+
+            i, j = matrix.nonzero()
+
+            i_idx = i[idx]
+            j_idx = j[idx]
+
+            if len(i_idx) > 0:
+                floored[i_idx, j_idx] += 1
+
+        floored.eliminate_zeros()
+        del matrix
+
+        return floored
+
+    if mode == "reals":
+        n,m = matrix.shape
+        nnz = matrix.nnz
+
+        # if the matrix has 100% sparsity, we equally distribute the chips
+        if nnz == 0:
+            x = chips / n / m
+            matrix[:] = x
+            return matrix
+
+        if norm:
+            if matrix_sum_final is None:
+                matrix_sum_final = matrix.sum()
+            # it may make sense to do this in the outer scripts for memory reasons
+            matrix = (matrix / matrix_sum_final) * chips
+        else:
+            matrix = matrix * chips
+
+        return matrix
+
+def distr_chips_row(matrix, chips, n_jobs=-1, norm=True, mode="integers"):
+    '''
+    Trial roulette method for eliciting Dirichlet priors from expressed hypothesis matrix.
+    This function works row-based. Thus, each row will receive the given number of chips!!!
+    :param matrix: csr_matrix A_k expressing theory H_k
+    :param chips: number of (single row) chips C to distribute
+    :param n_jobs: number of jobs, default -1
+    :param norm: set False if matrix does not need to be normalized (row-based)
+    :param mode: sets the mode of the distribution; "integers" means that the distributed pseudo clicks are integers;
+                 "reals" means that the pseudo clicks (hyperparameters) can also be positive reals
+    :return: Dirichlet hyperparameters in the shape of a matrix
+    '''
+
+    if mode not in ['integers', 'reals']:
+        raise Exception, "Mode needs to be 'integers' or 'reals'!"
+
+    chips = float(chips)
+
+    if float(chips).is_integer() == False and mode == "integers":
+        raise Exception, "If mode is 'integers' then only use integer chip counts!"
+
+    n = matrix.shape[1]
+    if chips < n:
+        raise Exception, "The current implementation requires at least as many chips as there are states!"
+
+    if norm == True:
+        norma = matrix.sum(axis=1)
+        n_nzeros = np.where(norma > 0)
+        n_zeros,_ = np.where(norma == 0)
+        norma[n_nzeros] = 1.0 / norma[n_nzeros]
+        norma = norma.T[0]
+        csr_scale_rows(matrix.shape[0], matrix.shape[1], matrix.indptr, matrix.indices,
+                       matrix.data, norma)
+
+    if mode == "integers":
+        r = Parallel(n_jobs=n_jobs)(delayed(distr_chips)(matrix[i,:],chips,norm=False) for i in xrange(matrix.shape[0]))
+        return scipy.sparse.vstack(r)
+
+    if mode == "reals":
+        matrix = matrix * chips
+
+        # if some rows have 100% sparsity, we equally distribute the chips
+        if norm == False:
+            norma = matrix.sum(axis=1)
+            n_zeros,_ = np.where(norma == 0)
+        if len(n_zeros) > 0:
+            n_zeros = np.array(n_zeros)[0]
+            matrix[n_zeros,:] = chips / n
+
+        return matrix
+
+
+#####HDF5 Methods#####
+
+# Note that the following HDF5 methods only support the "integers" mode at the moment.
+# Furthermore, no dedicated row-based methods are available
+# Preferably, the sparse methods above should be utilized as they offer more functionality
+# and as they are more rigorously tested
 
 def hdf5_save(matrix, filename, dtype=np.dtype(np.float64)):
     '''
@@ -45,108 +201,6 @@ def hdf5_save(matrix, filename, dtype=np.dtype(np.float64)):
 
     return
 
-def distr_chips(matrix, chips, matrix_sum_final = None, norm=True):
-    '''
-    Trial roulette method for eliciting Dirichlet priors from
-    expressed hypothesis matrix.
-    Note that only the informative part is done here.
-    :param matrix: csr_matrix A_k expressing theory H_k
-    :param chips: number of overall (whole matrix) chips C to distribute
-    :param matrix_sum_final: the final sum of the input matrix, can be provided if matrix.sum() does not suffice
-    :param norm: set False if matrix does not need to be normalized
-    :return: Dirichlet pseudo clicks in the shape of a matrix
-    '''
-
-    #print "chips", chips
-
-    chips = float(chips)
-
-    if float(chips).is_integer() == False:
-        raise Exception, "Only use C = |S|^2 * k"
-
-    n = matrix.shape[1]
-
-    nnz = matrix.nnz
-
-    #if the matrix has 100% sparsity, we equally distribute the chips
-    if nnz == 0:
-        x = chips / n
-        matrix[:] = int(x)
-        rest = chips - (int(x) * n)
-        if rest != 0.:
-            eles = matrix.data.shape[0]
-            idx = random.sample(range(eles),int(rest))
-            # i_idx = [] #random.sample(range(matrix.shape[0]),int(rest))
-            # j_idx = [] #random.sample(range(matrix.shape[1]),int(rest))
-            # for l in xrange(int(rest)):
-            #     i_idx.append(random.choice(range(matrix.shape[0])))
-            #     j_idx.append(random.choice(range(matrix.shape[1])))
-            # print len(i_idx)
-            matrix.data[idx] += 1
-        return matrix
-
-    if norm:
-        if matrix_sum_final is None:
-            matrix_sum_final = matrix.sum()
-        #it may make sense to do this in the outer scripts for memory reasons
-        matrix = (matrix / matrix_sum_final) * chips
-    else:
-        matrix = matrix * chips
-
-    floored = matrix.floor()
-
-    rest_sum = int(chips - floored.sum())
-
-    if rest_sum > 0:
-
-        #print "rest sum", rest_sum
-
-        matrix = matrix - floored
-        #print matrix.data.shape, floored.data.shape
-
-        #as we can assume that the indices and states are already
-        #in random order, we can also assume that ties are handled randomly here.
-        #Better randomization might be appropriate though
-        idx = matrix.data.argpartition(-rest_sum)[-rest_sum:]
-
-        i, j = matrix.nonzero()
-
-        i_idx = i[idx]
-        j_idx = j[idx]
-
-        if len(i_idx) > 0:
-            floored[i_idx, j_idx] += 1
-
-    floored.eliminate_zeros()
-
-    #print type(floored)
-
-    del matrix
-
-    #print "prior calc done"
-
-    #print floored.nnz
-
-    ##print floored
-
-    return floored
-
-def distr_chips_row(matrix, chips, n_jobs=-1, norm=True):
-    '''
-    Trial roulette method for eliciting Dirichlet priors from
-    expressed hypothesis matrix.
-    This function works row-based. Thus, each row will receive the given number of chips!!!
-    :param matrix: csr_matrix A_k expressing theory H_k
-    :param chips: number of (single row) chips C to distribute
-    :param n_jobs: number of jobs, default -1
-    :param norm: set False if matrix does not need to be normalized
-    :return: Dirichlet pseudo clicks in the shape of a matrix
-    '''
-
-    r = Parallel(n_jobs=n_jobs)(delayed(distr_chips)(matrix[i,:],chips,norm=norm) for i in xrange(matrix.shape[0]))
-
-    return scipy.sparse.vstack(r)
-
 def distr_chips_hdf5(file, chips, matrix_sum_final, out_name, norm=True):
     '''
     HDF5 (PyTables) version of the trial roulette method for eliciting Dirichlet priors from
@@ -175,7 +229,7 @@ def distr_chips_hdf5(file, chips, matrix_sum_final, out_name, norm=True):
     bl = 1000
     t0= time.time()
 
-    #dtype may need to be altered
+    # dtype may need to be altered
     floored = scipy.sparse.lil_matrix((l, k), dtype=np.uint16)
     rest = scipy.sparse.lil_matrix((l, k), dtype=np.float32)
     #print floored.dtype
@@ -250,7 +304,7 @@ def distr_chips_hdf5_sparse(file, chips, matrix_sum_final, out_name, norm=True):
     expressed hypothesis matrix.
     This version creates a new hdf5 file including the chip distribution.
     Note that only the informative part is done here.
-    This works both for sparsely stored hdf5 matrices.
+    This works for sparsely stored hdf5 matrices.
     :param file: hdf5 filename where hypothesis matrix A is stored (needs data, indices, indptr fields)
     :param shape: the shape of the matrix
     :param chips: number of chips C to distribute

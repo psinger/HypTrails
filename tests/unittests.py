@@ -9,28 +9,40 @@ from sklearn.preprocessing import normalize
 from hyptrails.trial_roulette import *
 from pathtools.markovchain import MarkovChain
 import os
-import logging
-from joblib import Parallel, delayed
 
 class TestFunctions(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
         self.states = 100
-        self.matrix = rand(self.states,self.states, density=0.2, format='csr')
+
+    def setUp(self):
+        self.matrix = rand(self.states,self.states, density=0.1, format='csr')
 
     def test_distr_chips(self):
         ret = distr_chips(self.matrix, self.states*self.states)
 
         self.assertEqual(ret.sum(), self.states*self.states)
 
-    def test_distr_chips_row(self):
+    def test_distr_chips_row_manual(self):
         tmp = lil_matrix(self.matrix.shape)
         for i in xrange(self.states):
             tmp[i,:] = distr_chips(self.matrix[i,:], self.states)
 
         self.assertEqual(tmp.sum(), self.states*self.states)
 
+    def test_distr_chips_row(self):
+        ret = distr_chips_row(self.matrix, self.states)
+        self.assertEqual(ret.sum(), self.states*self.states)
+
+    def test_distr_chips_reals(self):
+        ret = distr_chips(self.matrix, self.states*self.states, mode="reals")
+
+        self.assertAlmostEqual(ret.sum(), self.states*self.states)
+
+    def test_distr_chips_row_reals(self):
+        ret = distr_chips_row(self.matrix, self.states, mode="reals")
+        self.assertAlmostEqual(ret.sum(), self.states*self.states)
 
     def test_distr_chips_row_vs_full(self):
         tmp = normalize(self.matrix, norm='l1')
@@ -46,10 +58,33 @@ class TestFunctions(unittest.TestCase):
 
     def test_distr_chips_zeros(self):
         m = self.matrix
+        m[:] = 0.
+        m.eliminate_zeros()
+        ret = distr_chips(m, self.states*self.states*2)
+        self.assertEqual(ret.sum(), self.states*self.states*2)
+
+    def test_distr_chips_reals_zeros(self):
+        m = self.matrix
+        m[:] = 0.
+        m.eliminate_zeros()
+        ret = distr_chips(m, self.states*self.states, mode="reals")
+
+        self.assertEqual(ret.sum(), self.states*self.states)
+
+    def test_distr_chips_row_zeros(self):
+        m = self.matrix
         m[0,:] = 0.
         m.eliminate_zeros()
-        ret = distr_chips(m, self.states*self.states)
+        ret = distr_chips_row(m, self.states)
         self.assertEqual(ret.sum(), self.states*self.states)
+
+    def test_distr_chips_row_reals_zeros(self):
+        m = self.matrix
+        m[0,:] = 0.
+        m[99,:] = 0.
+        m.eliminate_zeros()
+        ret = distr_chips_row(m, self.states, mode="reals")
+        self.assertAlmostEqual(ret.sum(), self.states*self.states)
 
     def test_distr_chips_row_strange_chips(self):
         tmp = lil_matrix(self.matrix.shape)
@@ -57,6 +92,11 @@ class TestFunctions(unittest.TestCase):
             tmp[i,:] = distr_chips(self.matrix[i,:], self.states+53)
 
         self.assertEqual(tmp.sum(), (self.states)*(self.states)+ self.states*53)
+
+    def test_distr_chips_row_reals_strange_chips(self):
+        ret = distr_chips_row(self.matrix, self.states+53, mode="reals")
+
+        self.assertAlmostEqual(ret.sum(), (self.states)*(self.states)+ self.states*53)
 
     def test_distr_chips_norm(self):
         ret1 = distr_chips(self.matrix, self.states*self.states)
@@ -66,21 +106,11 @@ class TestFunctions(unittest.TestCase):
         np.testing.assert_array_equal(ret1.toarray(), ret2.toarray())
 
     def test_distr_chips_row_norm(self):
-        ret1 = distr_chips(self.matrix[0,:], self.states)
+        ret1 = distr_chips_row(self.matrix, self.states)
         tmp = normalize(self.matrix, norm='l1')
-        ret2 = distr_chips(tmp[0,:], self.states, norm=False)
+        ret2 = distr_chips_row(tmp, self.states, norm=False)
 
         np.testing.assert_array_equal(ret1.toarray(), ret2.toarray())
-
-    def test_distr_chips_row_parallel(self):
-
-        tmp = normalize(self.matrix, norm='l1')
-
-        ret1 = distr_chips_row(tmp, self.states, norm=False)
-
-        ret2 = distr_chips(tmp, self.states*self.states)
-
-        np.testing.assert_array_almost_equal(ret1.toarray(), ret2.toarray(), decimal=0)
 
     def test_distr_chips_hdf5(self):
         filters = tb.Filters(complevel=5, complib='blosc')
@@ -261,6 +291,88 @@ class TestFunctions(unittest.TestCase):
 
         self.assertEqual(evi1, evi2)
 
+    def test_evidence_uniform_row(self):
+        trails = []
+        with open("../data/test_case_4") as f:
+            for line in f:
+                if line.strip() == "":
+                    continue
+                line = line.strip().split(" ")
+                trails.append(np.array(line))
+
+        states = set()
+        for row in trails:
+            col = list(row)
+            for c in col:
+                states.add(c)
+
+        #build the vocabulary for matrix A
+        vocab = dict(((t, i) for i, t in enumerate(states)))
+
+        A = lil_matrix((5,5))
+        A[:] = 1.
+        A = A.tocsr()
+
+        ret1 = distr_chips_row(A, 5)
+
+        markov = MarkovChain(use_prior=True, prior=1., specific_prior=ret1,
+                                    specific_prior_vocab = vocab, modus="bayes", reset=False)
+        markov.prepare_data(trails)
+        markov.fit(trails)
+
+        evi1 = markov.bayesian_evidence()
+
+
+        markov = MarkovChain(use_prior=True, prior=2., modus="bayes", state_count=5, reset=False)
+        markov.prepare_data(trails)
+        markov.fit(trails)
+
+        evi2 = markov.bayesian_evidence()
+
+
+        self.assertEqual(evi1, evi2)
+
+    def test_evidence_uniform_row_reals(self):
+        trails = []
+        with open("../data/test_case_4") as f:
+            for line in f:
+                if line.strip() == "":
+                    continue
+                line = line.strip().split(" ")
+                trails.append(np.array(line))
+
+        states = set()
+        for row in trails:
+            col = list(row)
+            for c in col:
+                states.add(c)
+
+        #build the vocabulary for matrix A
+        vocab = dict(((t, i) for i, t in enumerate(states)))
+
+        A = lil_matrix((5,5))
+        A[:] = 1.
+        A = A.tocsr()
+
+        ret1 = distr_chips_row(A, 5, mode="reals")
+
+        markov = MarkovChain(use_prior=True, prior=1., specific_prior=ret1,
+                                    specific_prior_vocab = vocab, modus="bayes", reset=False)
+        markov.prepare_data(trails)
+        markov.fit(trails)
+
+        evi1 = markov.bayesian_evidence()
+
+
+        markov = MarkovChain(use_prior=True, prior=2., modus="bayes", state_count=5, reset=False)
+        markov.prepare_data(trails)
+        markov.fit(trails)
+
+        evi2 = markov.bayesian_evidence()
+
+
+        self.assertEqual(evi1, evi2)
+
     def test_evidence_uniform_morestates(self):
         trails = []
         with open("../data/test_case_4") as f:
@@ -301,6 +413,46 @@ class TestFunctions(unittest.TestCase):
 
 
         self.assertEqual(evi1, evi2)
+
+    def test_evidence_random_row_reals(self):
+        trails = []
+        with open("../data/test_case_4") as f:
+            for line in f:
+                if line.strip() == "":
+                    continue
+                line = line.strip().split(" ")
+                trails.append(np.array(line))
+
+        states = set()
+        for row in trails:
+            col = list(row)
+            for c in col:
+                states.add(c)
+
+        #build the vocabulary for matrix A
+        vocab = dict(((t, i) for i, t in enumerate(states)))
+
+        A = rand(5,5, density=0.5, format='csr')
+
+        ret1 = distr_chips_row(A, 5, mode="integers")
+
+        markov = MarkovChain(use_prior=True, prior=1., specific_prior=ret1,
+                                    specific_prior_vocab = vocab, modus="bayes", reset=False)
+        markov.prepare_data(trails)
+        markov.fit(trails)
+
+        evi1 = markov.bayesian_evidence()
+
+        ret2 = distr_chips_row(A, 5, mode="reals")
+
+        markov = MarkovChain(use_prior=True, prior=1., specific_prior=ret2,
+                                    specific_prior_vocab = vocab, modus="bayes", reset=False)
+        markov.prepare_data(trails)
+        markov.fit(trails)
+
+        evi2 = markov.bayesian_evidence()
+
+        self.assertLess(abs(evi1-evi2),2)
 
 if __name__ == '__main__':
     unittest.main()
