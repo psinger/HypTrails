@@ -13,7 +13,7 @@ from scipy.sparse.sparsetools import csr_scale_rows
 
 ####CSR_MATRIX methods#####
 
-def distr_chips(matrix, chips, matrix_sum_final = None, norm=True, mode="integers"):
+def distr_chips(matrix, chips, matrix_sum_final = None, norm=True, dist_zero_matrix = True, mode="integers"):
     '''
     Trial roulette method for eliciting Dirichlet priors from expressed hypothesis matrix.
     Note that only the informative part is done here.
@@ -23,6 +23,8 @@ def distr_chips(matrix, chips, matrix_sum_final = None, norm=True, mode="integer
     :param chips: number of overall (whole matrix) chips C to distribute
     :param matrix_sum_final: the final sum of the input matrix, can be provided if matrix.sum() does not suffice
     :param norm: set False if matrix does not need to be normalized (whole matrix)
+    :param dist_zero_matrix: if set to False, method does not distribute chips if the whole matrix is empty
+                            (only zeros); use with caution
     :param mode: sets the mode of the distribution; "integers" means that the distributed pseudo clicks are integers;
                  "reals" means that the pseudo clicks (hyperparameters) can also be positive reals
     :return: Dirichlet hyperparameters in the shape of a matrix
@@ -38,18 +40,20 @@ def distr_chips(matrix, chips, matrix_sum_final = None, norm=True, mode="integer
 
     if mode == "integers":
         nnz = matrix.nnz
-        n,m = matrix.shape
-        # if the matrix has 100% sparsity, we equally distribute the chips
-        if nnz == 0:
-            x = chips / n / m
-            matrix[:] = int(x)
-            rest = chips - (int(x) * n * m)
-            if rest != 0.:
-                eles = matrix.data.shape[0]
-                idx = random.sample(range(eles),int(rest))
-                matrix.data[idx] += 1
-            return matrix
-
+        if nnz== 0:
+            if dist_zero_matrix:
+                n,m = matrix.shape
+                # if the matrix has 100% sparsity, we equally distribute the chips
+                x = chips / n / m
+                matrix[:] = int(x)
+                rest = chips - (int(x) * n * m)
+                if rest != 0.:
+                    eles = matrix.data.shape[0]
+                    idx = random.sample(range(eles),int(rest))
+                    matrix.data[idx] += 1
+                return matrix
+            else:
+                return matrix
         if norm:
             if matrix_sum_final is None:
                 matrix_sum_final = matrix.sum()
@@ -84,14 +88,14 @@ def distr_chips(matrix, chips, matrix_sum_final = None, norm=True, mode="integer
         return floored
 
     if mode == "reals":
-        n,m = matrix.shape
-        nnz = matrix.nnz
-
-        # if the matrix has 100% sparsity, we equally distribute the chips
-        if nnz == 0:
-            x = chips / n / m
-            matrix[:] = x
-            return matrix
+        if dist_zero_matrix:
+            n,m = matrix.shape
+            nnz = matrix.nnz
+            # if the matrix has 100% sparsity, we equally distribute the chips
+            if nnz == 0:
+                x = chips / n / m
+                matrix[:] = x
+                return matrix
 
         if norm:
             if matrix_sum_final is None:
@@ -103,7 +107,7 @@ def distr_chips(matrix, chips, matrix_sum_final = None, norm=True, mode="integer
 
         return matrix
 
-def distr_chips_row(matrix, chips, n_jobs=-1, norm=True, mode="integers"):
+def distr_chips_row(matrix, chips, n_jobs=-1, norm=True, dist_zero_rows=True, mode="integers"):
     '''
     Trial roulette method for eliciting Dirichlet priors from expressed hypothesis matrix.
     This function works row-based. Thus, each row will receive the given number of chips!!!
@@ -111,6 +115,7 @@ def distr_chips_row(matrix, chips, n_jobs=-1, norm=True, mode="integers"):
     :param chips: number of (single row) chips C to distribute
     :param n_jobs: number of jobs, default -1
     :param norm: set False if matrix does not need to be normalized (row-based)
+    :param dist_zero_rows: if set to False, the method does not distribute chips to rows with only zeros (use with caution)
     :param mode: sets the mode of the distribution; "integers" means that the distributed pseudo clicks are integers;
                  "reals" means that the pseudo clicks (hyperparameters) can also be positive reals
     :return: Dirichlet hyperparameters in the shape of a matrix
@@ -140,15 +145,16 @@ def distr_chips_row(matrix, chips, n_jobs=-1, norm=True, mode="integers"):
     if mode == "reals":
         matrix = matrix * chips
 
-        # if some rows have 100% sparsity, we equally distribute the chips
-        n,m = matrix.shape
-        if norm == False:
-            norma = matrix.sum(axis=1)
-            n_zeros,_ = np.where(norma == 0)
-        if len(n_zeros) > 0:
-            #with numpy 1.10 dev, the next line needs to be commented out
-            n_zeros = np.array(n_zeros)[0]
-            matrix[n_zeros,:] = chips / m
+        if dist_zero_rows == True:
+            # if some rows have 100% sparsity, we equally distribute the chips
+            n,m = matrix.shape
+            if norm == False:
+                norma = matrix.sum(axis=1)
+                n_zeros,_ = np.where(norma == 0)
+            if len(n_zeros) > 0:
+                #with numpy 1.10 dev, the next line needs to be commented out
+                n_zeros = np.array(n_zeros)[0]
+                matrix[n_zeros,:] = chips / m
 
         return matrix
 
