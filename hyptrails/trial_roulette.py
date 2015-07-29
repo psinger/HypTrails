@@ -36,10 +36,6 @@ def distr_chips(matrix, chips, matrix_sum_final = None, norm=True, mode="integer
     if float(chips).is_integer() == False and mode == "integers":
         raise Exception, "If mode is 'integers' then only use integer chip counts!"
 
-    n = matrix.shape[1]
-    if chips < n:
-        raise Exception, "The current implementation requires at least as many chips as there are states!"
-
     if mode == "integers":
         nnz = matrix.nnz
         n,m = matrix.shape

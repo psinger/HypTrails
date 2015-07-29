@@ -63,6 +63,13 @@ class TestFunctions(unittest.TestCase):
         ret = distr_chips(m, self.states*self.states*2)
         self.assertEqual(ret.sum(), self.states*self.states*2)
 
+    def test_distr_chips_smaller_zeros(self):
+        m = self.matrix
+        m[:] = 0.
+        m.eliminate_zeros()
+        ret = distr_chips(m, 90*90)
+        self.assertEqual(ret.sum(), 90*90)
+
     def test_distr_chips_reals_zeros(self):
         m = self.matrix
         m[:] = 0.
