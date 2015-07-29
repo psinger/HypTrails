@@ -2,7 +2,6 @@ from __future__ import division
 
 __author__ = 'psinger'
 
-import random
 import unittest
 from scipy.sparse import rand, lil_matrix, csr_matrix, vstack
 from sklearn.preprocessing import normalize
