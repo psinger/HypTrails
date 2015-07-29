@@ -124,10 +124,6 @@ def distr_chips_row(matrix, chips, n_jobs=-1, norm=True, mode="integers"):
     if float(chips).is_integer() == False and mode == "integers":
         raise Exception, "If mode is 'integers' then only use integer chip counts!"
 
-    n = matrix.shape[1]
-    if chips < n:
-        raise Exception, "The current implementation requires at least as many chips as there are states!"
-
     if norm == True:
         norma = matrix.sum(axis=1)
         n_nzeros = np.where(norma > 0)
@@ -145,12 +141,13 @@ def distr_chips_row(matrix, chips, n_jobs=-1, norm=True, mode="integers"):
         matrix = matrix * chips
 
         # if some rows have 100% sparsity, we equally distribute the chips
+        n,m = matrix.shape
         if norm == False:
             norma = matrix.sum(axis=1)
             n_zeros,_ = np.where(norma == 0)
         if len(n_zeros) > 0:
             n_zeros = np.array(n_zeros)[0]
-            matrix[n_zeros,:] = chips / n
+            matrix[n_zeros,:] = chips / m
 
         return matrix
 
