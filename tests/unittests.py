@@ -92,6 +92,14 @@ class TestFunctions(unittest.TestCase):
         ret = distr_chips_row(m, self.states, mode="reals")
         self.assertAlmostEqual(ret.sum(), self.states*self.states)
 
+    def test_distr_chips_row_reals_all_zeros(self):
+        m = self.matrix
+        m[:] = 0.
+        m.eliminate_zeros()
+        ret = distr_chips_row(m, self.states, mode="reals")
+
+        self.assertEqual(ret.sum(), self.states*self.states)
+
     def test_distr_chips_row_strange_chips(self):
         tmp = lil_matrix(self.matrix.shape)
         for i in xrange(self.states):

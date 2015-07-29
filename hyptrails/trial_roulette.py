@@ -146,6 +146,7 @@ def distr_chips_row(matrix, chips, n_jobs=-1, norm=True, mode="integers"):
             norma = matrix.sum(axis=1)
             n_zeros,_ = np.where(norma == 0)
         if len(n_zeros) > 0:
+            #with numpy 1.10 dev, the next line needs to be commented out
             n_zeros = np.array(n_zeros)[0]
             matrix[n_zeros,:] = chips / m
 
