@@ -139,7 +139,7 @@ def distr_chips_row(matrix, chips, n_jobs=-1, norm=True, dist_zero_rows=True, mo
                        matrix.data, norma)
 
     if mode == "integers":
-        r = Parallel(n_jobs=n_jobs)(delayed(distr_chips)(matrix[i,:],chips,norm=False) for i in xrange(matrix.shape[0]))
+        r = Parallel(n_jobs=n_jobs)(delayed(distr_chips)(matrix[i,:],chips,dist_zero_matrix=dist_zero_rows,norm=False) for i in xrange(matrix.shape[0]))
         return scipy.sparse.vstack(r)
 
     if mode == "reals":
