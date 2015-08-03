@@ -12,9 +12,9 @@ setup(
     license='MIT License',
     url='https://github.com/psinger/HypTrails',
     install_requires=[
-      'pathtools==0.6',
+      'pathtools==0.61',
     ],
     dependency_links=[
-      'https://github.com/psinger/PathTools/archive/master.zip#egg=pathtools-0.6'
+      'https://github.com/psinger/PathTools/archive/master.zip#egg=pathtools-0.61'
     ]
 )
