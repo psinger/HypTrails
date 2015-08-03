@@ -15,6 +15,6 @@ setup(
       'pathtools==0.6',
     ],
     dependency_links=[
-      'https://github.com/psinger/PathTools/archive/master.zip#egg=pathtools-0.5'
+      'https://github.com/psinger/PathTools/archive/master.zip#egg=pathtools-0.6'
     ]
 )
